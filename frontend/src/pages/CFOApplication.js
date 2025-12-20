@@ -494,7 +494,7 @@ function CFOApplication() {
                 </div>
               </div>
 
-              <TextArea
+              <TextAreaField
                 label="Justify your capital allocation choice (max 3 lines)"
                 value={formData.capital_justification}
                 onChange={(v) => handleInputChange('capital_justification', v)}
@@ -503,7 +503,7 @@ function CFOApplication() {
                 placeholder="Explain your reasoning for this allocation strategy..."
               />
 
-              <TextArea
+              <TextAreaField
                 label="A startup is profitable on paper but has negative cash flow. What's happening and what would you do?"
                 value={formData.cash_vs_profit}
                 onChange={(v) => handleInputChange('cash_vs_profit', v)}
@@ -513,7 +513,7 @@ function CFOApplication() {
                 rows={4}
               />
 
-              <TextArea
+              <TextAreaField
                 label="Revenue dropped 20% this quarter. Which KPIs would you prioritize and why?"
                 value={formData.kpi_prioritization}
                 onChange={(v) => handleInputChange('kpi_prioritization', v)}
@@ -557,7 +557,7 @@ function CFOApplication() {
                 </div>
               </div>
 
-              <TextArea
+              <TextAreaField
                 label="What is the short-term impact of your choice?"
                 value={formData.dscr_impact}
                 onChange={(v) => handleInputChange('dscr_impact', v)}
@@ -615,7 +615,7 @@ function CFOApplication() {
                 </div>
               </div>
 
-              <TextArea
+              <TextAreaField
                 label="Explain your view of the CFO role in one line"
                 value={formData.mindset_explanation}
                 onChange={(v) => handleInputChange('mindset_explanation', v)}
@@ -690,7 +690,7 @@ function CFOApplication() {
               </div>
 
               <div className="pt-4 border-t border-gray-200">
-                <TextArea
+                <TextAreaField
                   label="Why do you deserve to be among the Top 100 future CFO leaders? (Max 3 lines)"
                   value={formData.why_top_100}
                   onChange={(v) => handleInputChange('why_top_100', v)}
