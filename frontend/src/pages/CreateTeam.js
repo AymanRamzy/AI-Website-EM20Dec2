@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { Trophy, Users, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Trophy, Users, ArrowLeft, AlertCircle, Award, CheckCircle, Loader } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || '';
 
@@ -15,37 +15,31 @@ function CreateTeam() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [teamEligibility, setTeamEligibility] = useState(null);
 
   useEffect(() => {
     loadCompetitions();
   }, []);
 
+  // Check team creation eligibility when competition is selected
+  useEffect(() => {
+    if (selectedCompetition) {
+      checkTeamEligibility(selectedCompetition);
+    } else {
+      setTeamEligibility(null);
+    }
+  }, [selectedCompetition]);
+
   const loadCompetitions = async () => {
     try {
       const response = await axios.get(`${API_URL}/api/cfo/competitions`);
       
-      // Check registration status for each competition
-      const competitionsWithRegistration = await Promise.all(
-        response.data.map(async (comp) => {
-          try {
-            const regResponse = await axios.get(
-              `${API_URL}/api/cfo/competitions/${comp.id}/is-registered`
-            );
-            return { ...comp, isRegistered: regResponse.data.is_registered };
-          } catch {
-            return { ...comp, isRegistered: false };
-          }
-        })
+      // Filter to open competitions only
+      const openCompetitions = response.data.filter(
+        (comp) => comp.status === 'registration_open' || comp.status === 'open'
       );
       
-      // Filter: registered, open for registration, not full
-      const availableCompetitions = competitionsWithRegistration.filter(
-        (comp) => 
-          comp.isRegistered &&
-          comp.status === 'registration_open' && 
-          comp.registered_teams < comp.max_teams
-      );
-      setCompetitions(availableCompetitions);
+      setCompetitions(openCompetitions);
     } catch (error) {
       console.error('Failed to load competitions:', error);
       setError('Failed to load competitions. Please try again.');
@@ -54,17 +48,32 @@ function CreateTeam() {
     }
   };
 
+  const checkTeamEligibility = async (competitionId) => {
+    try {
+      const response = await axios.get(`${API_URL}/api/cfo/teams/eligibility`, {
+        params: { competition_id: competitionId }
+      });
+      setTeamEligibility(response.data);
+    } catch (error) {
+      console.error('Failed to check eligibility:', error);
+      setTeamEligibility({
+        can_create_team: false,
+        reason: 'Failed to check eligibility'
+      });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!selectedCompetition) {
-      setError('Please select a competition');
+    if (!selectedCompetition || !teamName.trim()) {
+      setError('Please select a competition and enter a team name');
       return;
     }
 
-    if (!teamName.trim()) {
-      setError('Please enter a team name');
+    if (!teamEligibility?.can_create_team) {
+      setError(teamEligibility?.reason || 'You are not eligible to create a team');
       return;
     }
 
@@ -76,179 +85,198 @@ function CreateTeam() {
         team_name: teamName.trim(),
       });
 
-      // Redirect to team details page
-      navigate(`/teams/${response.data.id}`);
+      // Navigate to the team details page
+      if (response.data?.id) {
+        navigate(`/teams/${response.data.id}`);
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error) {
       console.error('Failed to create team:', error);
-      if (error.response?.data?.detail) {
-        setError(error.response.data.detail);
-      } else {
-        setError('Failed to create team. Please try again.');
-      }
+      setError(error.response?.data?.detail || 'Failed to create team. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const selectedCompetitionData = competitions.find(
-    (comp) => comp.id === selectedCompetition
-  );
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-modex-secondary"></div>
+        <div className="text-center">
+          <Loader className="w-12 h-12 animate-spin text-modex-secondary mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center">
-            <Link
-              to="/dashboard"
-              className="text-modex-secondary hover:text-modex-primary transition-colors mr-4"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </Link>
-            <h1 className="text-2xl font-bold text-modex-primary">
-              Create New Team
-            </h1>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="max-w-2xl mx-auto px-4">
+        {/* Back Button */}
+        <Link
+          to="/dashboard"
+          className="inline-flex items-center text-gray-600 hover:text-modex-secondary mb-6 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5 mr-2" />
+          Back to Dashboard
+        </Link>
 
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {competitions.length === 0 ? (
-          <div className="bg-white rounded-xl p-12 text-center border-2 border-gray-200">
-            <Trophy className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-700 mb-2">
-              No Competitions Available
-            </h3>
-            <p className="text-gray-600 mb-6">
-              You haven't registered for any competitions yet, or all competitions are full.
-              Please register for a competition first.
-            </p>
-            <Link
-              to="/dashboard"
-              className="inline-block bg-modex-secondary text-white px-6 py-3 rounded-lg font-bold hover:bg-modex-primary transition-colors"
-            >
-              Back to Dashboard
-            </Link>
+        {/* Header */}
+        <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-200 mb-6">
+          <div className="flex items-center mb-6">
+            <div className="bg-modex-secondary/10 p-4 rounded-xl mr-4">
+              <Users className="w-10 h-10 text-modex-secondary" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-modex-primary">Create Your Team</h1>
+              <p className="text-gray-600">As a Qualified CFO, build your team of 5</p>
+            </div>
           </div>
-        ) : (
-          <div className="bg-white rounded-xl p-8 border-2 border-gray-200">
+
+          {/* CFO-First Notice */}
+          <div className="bg-modex-light border border-modex-accent/30 rounded-lg p-4 mb-6">
+            <div className="flex items-start">
+              <Award className="w-6 h-6 text-modex-accent mr-3 flex-shrink-0" />
+              <div>
+                <h3 className="font-bold text-modex-primary">CFO-First Model</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Only Qualified CFOs (Top 100) can create teams. If you haven&apos;t applied yet, 
+                  submit your CFO application first.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start">
+              <AlertCircle className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {competitions.length === 0 ? (
+            <div className="text-center py-8">
+              <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-gray-800 mb-2">No Active Competitions</h3>
+              <p className="text-gray-600">
+                There are no competitions open for team creation at this time.
+              </p>
+            </div>
+          ) : (
             <form onSubmit={handleSubmit}>
-              {error && (
-                <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start">
-                  <AlertCircle className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>{error}</span>
-                </div>
-              )}
-
               {/* Competition Selection */}
               <div className="mb-6">
-                <label className="block text-sm font-bold text-modex-primary mb-2">
-                  Select Competition *
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Select Competition
                 </label>
                 <select
                   value={selectedCompetition}
                   onChange={(e) => setSelectedCompetition(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-modex-secondary focus:outline-none transition-colors"
-                  required
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-modex-secondary focus:outline-none transition-colors"
                 >
-                  <option value="">-- Choose a competition --</option>
+                  <option value="">-- Select a Competition --</option>
                   {competitions.map((comp) => (
                     <option key={comp.id} value={comp.id}>
-                      {comp.title} ({comp.registered_teams}/{comp.max_teams} teams)
+                      {comp.title}
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* Competition Details */}
-              {selectedCompetitionData && (
-                <div className="mb-6 bg-modex-light p-4 rounded-lg">
-                  <h4 className="font-bold text-modex-primary mb-2">
-                    {selectedCompetitionData.title}
-                  </h4>
-                  <p className="text-sm text-gray-600 mb-3">
-                    {selectedCompetitionData.description}
-                  </p>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
+              {/* Eligibility Status */}
+              {selectedCompetition && teamEligibility && (
+                <div className={`mb-6 p-4 rounded-lg border-2 ${
+                  teamEligibility.can_create_team 
+                    ? 'bg-green-50 border-green-200' 
+                    : 'bg-yellow-50 border-yellow-200'
+                }`}>
+                  <div className="flex items-start">
+                    {teamEligibility.can_create_team ? (
+                      <CheckCircle className="w-6 h-6 text-green-600 mr-3 flex-shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-6 h-6 text-yellow-600 mr-3 flex-shrink-0" />
+                    )}
                     <div>
-                      <span className="text-gray-600">Registration Deadline:</span>
-                      <p className="font-semibold text-modex-primary">
-                        {new Date(selectedCompetitionData.registration_deadline).toLocaleDateString()}
+                      <h4 className={`font-bold ${teamEligibility.can_create_team ? 'text-green-800' : 'text-yellow-800'}`}>
+                        {teamEligibility.can_create_team ? 'Eligible to Create Team' : 'Not Yet Eligible'}
+                      </h4>
+                      <p className={`text-sm mt-1 ${teamEligibility.can_create_team ? 'text-green-700' : 'text-yellow-700'}`}>
+                        {teamEligibility.reason}
                       </p>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Available Slots:</span>
-                      <p className="font-semibold text-modex-primary">
-                        {selectedCompetitionData.max_teams - selectedCompetitionData.registered_teams} teams left
-                      </p>
+                      {teamEligibility.cfo_status && (
+                        <p className="text-sm mt-2">
+                          <strong>CFO Status:</strong> {teamEligibility.cfo_status}
+                        </p>
+                      )}
+                      {!teamEligibility.can_create_team && teamEligibility.cfo_status !== 'qualified' && (
+                        <Link 
+                          to={`/cfo-application/${selectedCompetition}`}
+                          className="inline-flex items-center mt-3 text-modex-secondary hover:underline font-semibold"
+                        >
+                          <Award className="w-4 h-4 mr-1" />
+                          Apply as CFO
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </div>
               )}
 
               {/* Team Name */}
-              <div className="mb-6">
-                <label className="block text-sm font-bold text-modex-primary mb-2">
-                  Team Name *
-                </label>
-                <input
-                  type="text"
-                  value={teamName}
-                  onChange={(e) => setTeamName(e.target.value)}
-                  placeholder="Enter your team name"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-modex-secondary focus:outline-none transition-colors"
-                  required
-                  maxLength={50}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Choose a unique and memorable name for your team
-                </p>
-              </div>
+              {teamEligibility?.can_create_team && (
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Team Name
+                  </label>
+                  <input
+                    type="text"
+                    value={teamName}
+                    onChange={(e) => setTeamName(e.target.value)}
+                    placeholder="Enter your team name"
+                    maxLength={50}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-modex-secondary focus:outline-none transition-colors"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {teamName.length}/50 characters
+                  </p>
+                </div>
+              )}
 
-              {/* Info Box */}
-              <div className="mb-6 bg-blue-50 border border-blue-200 p-4 rounded-lg">
-                <h4 className="font-bold text-blue-900 mb-2 flex items-center">
-                  <Users className="w-5 h-5 mr-2" />
-                  Team Information
-                </h4>
-                <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• You will be the team leader</li>
-                  <li>• Maximum 5 members per team</li>
-                  <li>• Share your team ID with others to invite them</li>
-                  <li>• You can assign roles to team members</li>
-                </ul>
-              </div>
-
-              {/* Buttons */}
-              <div className="flex space-x-4">
-                <button
-                  type="button"
-                  onClick={() => navigate('/dashboard')}
-                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-50 transition-colors"
-                  disabled={submitting}
-                >
-                  Cancel
-                </button>
+              {/* Submit Button */}
+              {teamEligibility?.can_create_team && (
                 <button
                   type="submit"
-                  className="flex-1 px-6 py-3 bg-modex-accent text-white rounded-lg font-bold hover:bg-modex-primary transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  disabled={submitting}
+                  disabled={submitting || !teamName.trim()}
+                  className="w-full bg-gradient-to-r from-modex-secondary to-modex-accent text-white py-3 rounded-lg font-bold hover:shadow-lg transition-all disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed flex items-center justify-center"
                 >
-                  {submitting ? 'Creating...' : 'Create Team'}
+                  {submitting ? (
+                    <>
+                      <Loader className="w-5 h-5 mr-2 animate-spin" />
+                      Creating Team...
+                    </>
+                  ) : (
+                    <>
+                      <Users className="w-5 h-5 mr-2" />
+                      Create Team
+                    </>
+                  )}
                 </button>
-              </div>
+              )}
             </form>
-          </div>
-        )}
+          )}
+        </div>
+
+        {/* Info Box */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h4 className="font-semibold text-blue-900 mb-2">Team Requirements</h4>
+          <ul className="text-sm text-blue-800 space-y-1">
+            <li>• Only Qualified CFOs (Top 100) can create teams</li>
+            <li>• Teams need 5 members total (including you as CFO)</li>
+            <li>• Assign roles: Analyst, Designer, Strategist, Communicator</li>
+            <li>• Complete your team before the deadline</li>
+          </ul>
+        </div>
       </div>
     </div>
   );
