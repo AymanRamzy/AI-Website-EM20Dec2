@@ -643,7 +643,7 @@ function CFOApplication() {
 
               <div className="space-y-4">
                 <label className="block font-semibold text-gray-800 mb-2">
-                  You discover a financial irregularity that could impact the company's reported earnings. What do you do?
+                  You discover a financial irregularity that could impact the company&apos;s reported earnings. What do you do?
                 </label>
                 <div className="space-y-3">
                   {[
