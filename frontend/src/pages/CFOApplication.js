@@ -119,12 +119,6 @@ function CFOApplication() {
   useEffect(() => {
     checkEligibility();
   }, [checkEligibility]);
-    } catch (err) {
-      setError('Failed to check eligibility');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
