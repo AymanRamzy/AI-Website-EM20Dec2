@@ -165,8 +165,10 @@ async def get_me(current_user: User = Depends(get_current_user)):
 
 
 # =========================================================
-# CFO APPLICATION - Leadership Application System
+# CFO APPLICATION - Leadership Application System (CFO-FIRST MODEL)
 # =========================================================
+# Phase 1: Individual CFO applications (NO team requirements)
+# Phase 2: Only Qualified CFOs (Top 100) can create teams
 
 from cfo_application_scoring import (
     CFOFullApplication, calculate_total_score, determine_status,
@@ -179,7 +181,10 @@ async def check_cfo_eligibility(
     competition_id: str,
     current_user: User = Depends(get_current_user)
 ):
-    """Check if user is eligible to apply as CFO"""
+    """
+    Check if user is eligible to apply as CFO.
+    CFO-FIRST MODEL: No team requirements - individuals apply first.
+    """
     import logging
     logger = logging.getLogger(__name__)
     supabase = get_supabase_client()
@@ -189,15 +194,12 @@ async def check_cfo_eligibility(
         "reasons": [],
         "checks": {
             "authenticated": True,
-            "is_team_leader": False,
-            "team_complete": False,
-            "roles_assigned": False,
             "applications_open": False,
             "not_already_applied": True
         }
     }
     
-    # Check competition status
+    # Check competition exists
     comp_result = supabase.table("competitions").select("*").eq("id", competition_id).execute()
     if not comp_result.data:
         eligibility["reasons"].append("Competition not found")
@@ -205,29 +207,38 @@ async def check_cfo_eligibility(
     
     competition = comp_result.data[0]
     
-    # Check if applications are open (status should be 'applications_open' or 'open')
+    # Check if applications are open
     if competition.get("status") in ["applications_open", "open"]:
         eligibility["checks"]["applications_open"] = True
     else:
-        eligibility["reasons"].append("CFO applications are not open for this competition")
+        eligibility["reasons"].append("CFO applications are not currently open")
     
-    # Check if user is a team leader
-    team_result = supabase.table("teams")\
-        .select("*")\
+    # Check if already applied
+    existing_app = supabase.table("cfo_applications")\
+        .select("id, status")\
+        .eq("user_id", current_user.id)\
         .eq("competition_id", competition_id)\
-        .eq("leader_id", current_user.id)\
         .execute()
     
-    if not team_result.data:
-        eligibility["reasons"].append("You must be a team leader to apply as CFO")
-        return eligibility
+    if existing_app.data:
+        eligibility["checks"]["not_already_applied"] = False
+        app_status = existing_app.data[0].get("status", "pending")
+        eligibility["existing_application"] = {
+            "id": existing_app.data[0]["id"],
+            "status": app_status
+        }
+        eligibility["reasons"].append(f"You have already applied (Status: {app_status})")
     
-    team = team_result.data[0]
-    eligibility["checks"]["is_team_leader"] = True
+    # Determine final eligibility
+    all_checks_passed = all(eligibility["checks"].values())
+    eligibility["eligible"] = all_checks_passed
     
-    # Check team completeness (5 members)
-    members_result = supabase.table("team_members")\
-        .select("*")\
+    if all_checks_passed:
+        eligibility["reasons"] = ["You are eligible to apply as CFO"]
+    
+    logger.info(f"CFO eligibility check for user {current_user.id}: eligible={eligibility['eligible']}")
+    
+    return eligibility
         .eq("team_id", team["id"])\
         .execute()
     
