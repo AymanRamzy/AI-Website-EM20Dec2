@@ -637,7 +637,7 @@ function CFOApplication() {
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                 <p className="text-sm text-yellow-800">
                   <strong>Important:</strong> This section evaluates your ethical judgment. 
-                  There are no trick questions - we're looking for leaders who do the right thing.
+                  There are no trick questions - we&apos;re looking for leaders who do the right thing.
                 </p>
               </div>
 
