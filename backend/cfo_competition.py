@@ -239,45 +239,6 @@ async def check_cfo_eligibility(
     logger.info(f"CFO eligibility check for user {current_user.id}: eligible={eligibility['eligible']}")
     
     return eligibility
-        .eq("team_id", team["id"])\
-        .execute()
-    
-    members = members_result.data or []
-    if len(members) >= 5:
-        eligibility["checks"]["team_complete"] = True
-    else:
-        eligibility["reasons"].append(f"Team needs {5 - len(members)} more members to be complete")
-    
-    # Check if all non-leader members have roles assigned
-    non_leader_members = [m for m in members if m["user_id"] != current_user.id]
-    members_with_roles = [m for m in non_leader_members if m.get("team_role")]
-    
-    if len(non_leader_members) == len(members_with_roles) and len(non_leader_members) > 0:
-        eligibility["checks"]["roles_assigned"] = True
-    else:
-        eligibility["reasons"].append("All team members must have roles assigned")
-    
-    # Check if already applied
-    existing_app = supabase.table("cfo_applications")\
-        .select("id")\
-        .eq("user_id", current_user.id)\
-        .eq("competition_id", competition_id)\
-        .execute()
-    
-    if existing_app.data:
-        eligibility["checks"]["not_already_applied"] = False
-        eligibility["reasons"].append("You have already submitted a CFO application")
-    
-    # Final eligibility
-    all_checks_passed = all(eligibility["checks"].values())
-    eligibility["eligible"] = all_checks_passed
-    
-    if all_checks_passed:
-        eligibility["reasons"] = ["You are eligible to apply as CFO"]
-    
-    logger.info(f"CFO eligibility check for user {current_user.id}: {eligibility}")
-    
-    return eligibility
 
 
 @router.post("/applications/submit", status_code=201)
@@ -285,7 +246,7 @@ async def submit_cfo_application(
     application: CFOFullApplication,
     current_user: User = Depends(get_current_user)
 ):
-    """Submit full CFO leadership application"""
+    """Submit full CFO leadership application (CFO-FIRST: No team required)"""
     import logging
     logger = logging.getLogger(__name__)
     supabase = get_supabase_client()
