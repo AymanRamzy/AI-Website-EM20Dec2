@@ -600,7 +600,7 @@ async def register_for_competition(
 
 
 # =========================================================
-# TEAMS
+# TEAMS (CFO-FIRST: Only Qualified CFOs can create teams)
 # =========================================================
 
 
@@ -609,22 +609,38 @@ async def create_team(
     team_data: TeamCreate,
     current_user: User = Depends(get_current_user)
 ):
-    """Create a new team for a competition using atomic RPC."""
+    """
+    Create a new team for a competition.
+    CFO-FIRST MODEL: Only users with qualified CFO status can create teams.
+    """
     import logging
     logger = logging.getLogger(__name__)
     supabase = get_supabase_client()
     
-    # Check if user is registered for the competition
-    registration = supabase.table("competition_registrations") \
-        .select("id") \
+    # CFO-FIRST: Check if user is a QUALIFIED CFO for this competition
+    cfo_app = supabase.table("cfo_applications") \
+        .select("id, status") \
         .eq("competition_id", team_data.competition_id) \
         .eq("user_id", current_user.id) \
         .execute()
     
-    if not registration.data:
+    if not cfo_app.data:
         raise HTTPException(
             status_code=403,
-            detail="You must be registered for this competition to create a team"
+            detail="You must apply as CFO first before creating a team"
+        )
+    
+    app_status = cfo_app.data[0].get("status")
+    if app_status != "qualified":
+        status_messages = {
+            "pending": "Your CFO application is still under review",
+            "reserve": "You are on the reserve list (Top 101-150). Only Top 100 CFOs can create teams",
+            "not_selected": "Your CFO application was not selected",
+            "excluded": "Your CFO application was not eligible"
+        }
+        raise HTTPException(
+            status_code=403,
+            detail=status_messages.get(app_status, "Only qualified CFOs (Top 100) can create teams")
         )
     
     # Check if user is already in a team for this competition
@@ -642,7 +658,6 @@ async def create_team(
             )
     
     # Create team atomically using RPC (single transaction)
-    # If either teams or team_members insert fails, entire operation rolls back
     try:
         result = supabase.rpc(
             "create_team_with_leader",
@@ -657,7 +672,7 @@ async def create_team(
         if not result.data:
             raise HTTPException(status_code=500, detail="Failed to create team")
         
-        logger.info(f"Team created atomically for user {current_user.id}")
+        logger.info(f"Team created by qualified CFO {current_user.id}")
         
         return result.data
         
