@@ -286,26 +286,6 @@ function TeamDetails() {
               </div>
             </div>
           )}
-                <div className={`flex items-center text-sm ${cfoEligibility.checks?.is_team_leader ? 'text-green-600' : 'text-gray-500'}`}>
-                  {cfoEligibility.checks?.is_team_leader ? <CheckCircle className="w-4 h-4 mr-2" /> : <span className="w-4 h-4 mr-2 rounded-full border-2 border-current" />}
-                  You are the team leader
-                </div>
-                <div className={`flex items-center text-sm ${cfoEligibility.checks?.team_complete ? 'text-green-600' : 'text-gray-500'}`}>
-                  {cfoEligibility.checks?.team_complete ? <CheckCircle className="w-4 h-4 mr-2" /> : <span className="w-4 h-4 mr-2 rounded-full border-2 border-current" />}
-                  Team has 5 members
-                </div>
-                <div className={`flex items-center text-sm ${cfoEligibility.checks?.roles_assigned ? 'text-green-600' : 'text-gray-500'}`}>
-                  {cfoEligibility.checks?.roles_assigned ? <CheckCircle className="w-4 h-4 mr-2" /> : <span className="w-4 h-4 mr-2 rounded-full border-2 border-current" />}
-                  All members have roles assigned
-                </div>
-                <div className={`flex items-center text-sm ${cfoEligibility.checks?.applications_open ? 'text-green-600' : 'text-gray-500'}`}>
-                  {cfoEligibility.checks?.applications_open ? <CheckCircle className="w-4 h-4 mr-2" /> : <span className="w-4 h-4 mr-2 rounded-full border-2 border-current" />}
-                  CFO applications are open
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Team ID (for sharing) */}
           {isLeader && team.members.length < team.max_members && (
             <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6">
