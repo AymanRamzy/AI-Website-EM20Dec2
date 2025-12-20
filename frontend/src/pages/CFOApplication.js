@@ -568,7 +568,7 @@ function CFOApplication() {
 
               <div className="space-y-4">
                 <label className="block font-semibold text-gray-800 mb-2">
-                  You must cut costs by 15% immediately. What's your first priority?
+                  You must cut costs by 15% immediately. What&apos;s your first priority?
                 </label>
                 <div className="space-y-3">
                   {[
