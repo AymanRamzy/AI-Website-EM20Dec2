@@ -212,7 +212,7 @@ function CFOApplication() {
     );
   }
 
-  // Not eligible
+  // Not eligible (CFO-FIRST: Simple checks only)
   if (eligibility && !eligibility.eligible) {
     return (
       <div className="min-h-screen bg-gray-50 py-12">
@@ -220,7 +220,7 @@ function CFOApplication() {
           <div className="bg-white rounded-xl p-8 shadow-sm border-2 border-red-200">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-center text-gray-800 mb-4">
-              Not Eligible to Apply
+              {eligibility.existing_application ? 'Already Applied' : 'Not Eligible to Apply'}
             </h2>
             <div className="bg-red-50 rounded-lg p-4 mb-6">
               <ul className="space-y-2">
@@ -232,20 +232,21 @@ function CFOApplication() {
                 ))}
               </ul>
             </div>
+            {eligibility.existing_application && (
+              <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Application Status:</strong> {eligibility.existing_application.status}
+                </p>
+              </div>
+            )}
             <div className="bg-gray-50 rounded-lg p-4">
               <h3 className="font-semibold text-gray-800 mb-2">Requirements:</h3>
               <ul className="space-y-1 text-sm text-gray-600">
-                <li className={eligibility.checks.is_team_leader ? 'text-green-600' : ''}>
-                  {eligibility.checks.is_team_leader ? '✓' : '○'} You must be a team leader
+                <li className={eligibility.checks?.applications_open ? 'text-green-600' : ''}>
+                  {eligibility.checks?.applications_open ? '✓' : '○'} CFO applications are open
                 </li>
-                <li className={eligibility.checks.team_complete ? 'text-green-600' : ''}>
-                  {eligibility.checks.team_complete ? '✓' : '○'} Team must have 5 members
-                </li>
-                <li className={eligibility.checks.roles_assigned ? 'text-green-600' : ''}>
-                  {eligibility.checks.roles_assigned ? '✓' : '○'} All team members must have roles
-                </li>
-                <li className={eligibility.checks.applications_open ? 'text-green-600' : ''}>
-                  {eligibility.checks.applications_open ? '✓' : '○'} Applications must be open
+                <li className={eligibility.checks?.not_already_applied ? 'text-green-600' : ''}>
+                  {eligibility.checks?.not_already_applied ? '✓' : '○'} Have not already applied
                 </li>
               </ul>
             </div>
