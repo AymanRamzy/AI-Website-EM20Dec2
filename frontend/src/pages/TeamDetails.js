@@ -274,6 +274,60 @@ function TeamDetails() {
             </div>
           )}
 
+          {/* CFO Application Button - Only show for eligible team leaders */}
+          {isLeader && cfoEligibility && cfoEligibility.eligible && (
+            <div className="bg-gradient-to-r from-modex-accent/10 to-modex-secondary/10 border-2 border-modex-accent/30 p-6 rounded-xl mb-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="bg-modex-accent/20 p-3 rounded-full mr-4">
+                    <Award className="w-8 h-8 text-modex-accent" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-modex-primary text-lg">Apply as CFO Leader</h4>
+                    <p className="text-sm text-gray-600">
+                      Your team is complete! Apply to be among the Top 100 CFO leaders.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => navigate(`/cfo-application/${team.competition_id}`)}
+                  className="bg-gradient-to-r from-modex-accent to-modex-secondary text-white px-6 py-3 rounded-lg font-bold hover:shadow-lg transition-all flex items-center"
+                >
+                  <Award className="w-5 h-5 mr-2" />
+                  Apply Now
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* CFO Eligibility Progress - Show for leaders who aren't eligible yet */}
+          {isLeader && cfoEligibility && !cfoEligibility.eligible && !cfoEligibility.checks?.not_already_applied === false && (
+            <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg mb-6">
+              <h4 className="font-semibold text-gray-800 mb-3 flex items-center">
+                <Award className="w-5 h-5 mr-2 text-gray-500" />
+                CFO Application Eligibility
+              </h4>
+              <div className="space-y-2">
+                <div className={`flex items-center text-sm ${cfoEligibility.checks?.is_team_leader ? 'text-green-600' : 'text-gray-500'}`}>
+                  {cfoEligibility.checks?.is_team_leader ? <CheckCircle className="w-4 h-4 mr-2" /> : <span className="w-4 h-4 mr-2 rounded-full border-2 border-current" />}
+                  You are the team leader
+                </div>
+                <div className={`flex items-center text-sm ${cfoEligibility.checks?.team_complete ? 'text-green-600' : 'text-gray-500'}`}>
+                  {cfoEligibility.checks?.team_complete ? <CheckCircle className="w-4 h-4 mr-2" /> : <span className="w-4 h-4 mr-2 rounded-full border-2 border-current" />}
+                  Team has 5 members
+                </div>
+                <div className={`flex items-center text-sm ${cfoEligibility.checks?.roles_assigned ? 'text-green-600' : 'text-gray-500'}`}>
+                  {cfoEligibility.checks?.roles_assigned ? <CheckCircle className="w-4 h-4 mr-2" /> : <span className="w-4 h-4 mr-2 rounded-full border-2 border-current" />}
+                  All members have roles assigned
+                </div>
+                <div className={`flex items-center text-sm ${cfoEligibility.checks?.applications_open ? 'text-green-600' : 'text-gray-500'}`}>
+                  {cfoEligibility.checks?.applications_open ? <CheckCircle className="w-4 h-4 mr-2" /> : <span className="w-4 h-4 mr-2 rounded-full border-2 border-current" />}
+                  CFO applications are open
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Team ID (for sharing) */}
           {isLeader && team.members.length < team.max_members && (
             <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6">
