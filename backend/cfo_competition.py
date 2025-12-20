@@ -683,6 +683,67 @@ async def create_team(
         raise HTTPException(status_code=500, detail=f"Failed to create team: {str(e)}")
 
 
+@router.get("/teams/eligibility")
+async def check_team_creation_eligibility(
+    competition_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Check if user can create a team (CFO-FIRST model).
+    Only qualified CFOs (Top 100) can create teams.
+    """
+    supabase = get_supabase_client()
+    
+    eligibility = {
+        "can_create_team": False,
+        "reason": "",
+        "cfo_status": None,
+        "has_team": False
+    }
+    
+    # Check CFO application status
+    cfo_app = supabase.table("cfo_applications") \
+        .select("id, status") \
+        .eq("competition_id", competition_id) \
+        .eq("user_id", current_user.id) \
+        .execute()
+    
+    if not cfo_app.data:
+        eligibility["reason"] = "You must apply as CFO first"
+        return eligibility
+    
+    app_status = cfo_app.data[0].get("status")
+    eligibility["cfo_status"] = app_status
+    
+    if app_status != "qualified":
+        status_reasons = {
+            "pending": "Your CFO application is under review",
+            "reserve": "You are on the reserve list (101-150)",
+            "not_selected": "Your application was not selected",
+            "excluded": "Your application was not eligible"
+        }
+        eligibility["reason"] = status_reasons.get(app_status, "Only qualified CFOs can create teams")
+        return eligibility
+    
+    # Check if already in a team
+    existing = supabase.table("team_members") \
+        .select("team_id, teams(competition_id)") \
+        .eq("user_id", current_user.id) \
+        .execute()
+    
+    for membership in existing.data or []:
+        team_info = membership.get("teams")
+        if team_info and team_info.get("competition_id") == competition_id:
+            eligibility["has_team"] = True
+            eligibility["reason"] = "You already have a team for this competition"
+            return eligibility
+    
+    eligibility["can_create_team"] = True
+    eligibility["reason"] = "You are a qualified CFO - you can create a team!"
+    
+    return eligibility
+
+
 @router.get("/teams/my-team")
 async def get_my_team(current_user: User = Depends(get_current_user)):
     """Get the current user's team."""
