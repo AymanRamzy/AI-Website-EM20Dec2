@@ -33,7 +33,6 @@ function TeamDetails() {
   const [leaving, setLeaving] = useState(false);
   const [assigningRole, setAssigningRole] = useState(null);
   const [activeTab, setActiveTab] = useState('members'); // members, chat, video
-  const [cfoEligibility, setCfoEligibility] = useState(null);
 
   const roles = ['Analyst', 'Designer', 'Strategist', 'Communicator'];
 
@@ -52,19 +51,6 @@ function TeamDetails() {
         `${API_URL}/api/cfo/competitions/${teamResponse.data.competition_id}`
       );
       setCompetition(compResponse.data);
-
-      // Check CFO application eligibility (only for team leaders)
-      if (teamResponse.data.leader_id === user?.id) {
-        try {
-          const eligibilityResponse = await axios.get(
-            `${API_URL}/api/cfo/applications/eligibility`,
-            { params: { competition_id: teamResponse.data.competition_id } }
-          );
-          setCfoEligibility(eligibilityResponse.data);
-        } catch (e) {
-          console.log('CFO eligibility check failed:', e);
-        }
-      }
     } catch (error) {
       console.error('Failed to load team data:', error);
       setError('Failed to load team data. Please try again.');
