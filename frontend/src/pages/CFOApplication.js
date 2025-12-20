@@ -103,16 +103,22 @@ function CFOApplication() {
     why_top_100: ''
   });
 
-  useEffect(() => {
-    checkEligibility();
-  }, [competitionId]);
-
-  const checkEligibility = async () => {
+  const checkEligibility = useCallback(async () => {
     try {
       const response = await axios.get(`${API_URL}/api/cfo/applications/eligibility`, {
         params: { competition_id: competitionId }
       });
       setEligibility(response.data);
+    } catch (err) {
+      setError('Failed to check eligibility');
+    } finally {
+      setLoading(false);
+    }
+  }, [competitionId]);
+
+  useEffect(() => {
+    checkEligibility();
+  }, [checkEligibility]);
     } catch (err) {
       setError('Failed to check eligibility');
     } finally {
