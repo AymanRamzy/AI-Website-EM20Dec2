@@ -20,6 +20,7 @@ import JoinTeam from './pages/JoinTeam';
 import TeamDetails from './pages/TeamDetails';
 import CompetitionDetails from './pages/CompetitionDetails';
 import AdminDashboard from './pages/AdminDashboard';
+import CFOApplication from './pages/CFOApplication';
 import './App.css';
 
 function App() {
