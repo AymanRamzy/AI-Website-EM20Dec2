@@ -200,46 +200,6 @@ function CFOApplication() {
     }
   };
 
-  // Render helpers
-  const RadioOption = ({ name, value, label, description, selected, onChange }) => (
-    <label className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
-      selected ? 'border-modex-secondary bg-modex-secondary/5' : 'border-gray-200 hover:border-gray-300'
-    }`}>
-      <div className="flex items-start">
-        <input
-          type="radio"
-          name={name}
-          value={value}
-          checked={selected}
-          onChange={() => onChange(value)}
-          className="mt-1 text-modex-secondary focus:ring-modex-secondary"
-        />
-        <div className="ml-3">
-          <span className="font-semibold text-gray-800">{label}</span>
-          {description && <p className="text-sm text-gray-600 mt-1">{description}</p>}
-        </div>
-      </div>
-    </label>
-  );
-
-  const TextArea = ({ label, value, onChange, maxLength, minLength, placeholder, rows = 3 }) => (
-    <div>
-      <label className="block font-semibold text-gray-800 mb-2">{label}</label>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        maxLength={maxLength}
-        placeholder={placeholder}
-        rows={rows}
-        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-modex-secondary focus:outline-none resize-none"
-      />
-      <div className="flex justify-between mt-1 text-xs text-gray-500">
-        <span>{value.length < minLength ? `Minimum ${minLength} characters required` : ''}</span>
-        <span>{value.length}/{maxLength}</span>
-      </div>
-    </div>
-  );
-
   // Loading state
   if (loading) {
     return (
