@@ -165,46 +165,309 @@ async def get_me(current_user: User = Depends(get_current_user)):
 
 
 # =========================================================
-# CFO APPLICATION
+# CFO APPLICATION - Leadership Application System
 # =========================================================
 
+from cfo_application_scoring import (
+    CFOFullApplication, calculate_total_score, determine_status,
+    CFOApplicationStep1, CFOApplicationStep2, CFOApplicationStep3, CFOApplicationStep4
+)
 
+
+@router.get("/applications/eligibility")
+async def check_cfo_eligibility(
+    competition_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Check if user is eligible to apply as CFO"""
+    import logging
+    logger = logging.getLogger(__name__)
+    supabase = get_supabase_client()
+    
+    eligibility = {
+        "eligible": False,
+        "reasons": [],
+        "checks": {
+            "authenticated": True,
+            "is_team_leader": False,
+            "team_complete": False,
+            "roles_assigned": False,
+            "applications_open": False,
+            "not_already_applied": True
+        }
+    }
+    
+    # Check competition status
+    comp_result = supabase.table("competitions").select("*").eq("id", competition_id).execute()
+    if not comp_result.data:
+        eligibility["reasons"].append("Competition not found")
+        return eligibility
+    
+    competition = comp_result.data[0]
+    
+    # Check if applications are open (status should be 'applications_open' or 'open')
+    if competition.get("status") in ["applications_open", "open"]:
+        eligibility["checks"]["applications_open"] = True
+    else:
+        eligibility["reasons"].append("CFO applications are not open for this competition")
+    
+    # Check if user is a team leader
+    team_result = supabase.table("teams")\
+        .select("*")\
+        .eq("competition_id", competition_id)\
+        .eq("leader_id", current_user.id)\
+        .execute()
+    
+    if not team_result.data:
+        eligibility["reasons"].append("You must be a team leader to apply as CFO")
+        return eligibility
+    
+    team = team_result.data[0]
+    eligibility["checks"]["is_team_leader"] = True
+    
+    # Check team completeness (5 members)
+    members_result = supabase.table("team_members")\
+        .select("*")\
+        .eq("team_id", team["id"])\
+        .execute()
+    
+    members = members_result.data or []
+    if len(members) >= 5:
+        eligibility["checks"]["team_complete"] = True
+    else:
+        eligibility["reasons"].append(f"Team needs {5 - len(members)} more members to be complete")
+    
+    # Check if all non-leader members have roles assigned
+    non_leader_members = [m for m in members if m["user_id"] != current_user.id]
+    members_with_roles = [m for m in non_leader_members if m.get("team_role")]
+    
+    if len(non_leader_members) == len(members_with_roles) and len(non_leader_members) > 0:
+        eligibility["checks"]["roles_assigned"] = True
+    else:
+        eligibility["reasons"].append("All team members must have roles assigned")
+    
+    # Check if already applied
+    existing_app = supabase.table("cfo_applications")\
+        .select("id")\
+        .eq("user_id", current_user.id)\
+        .eq("competition_id", competition_id)\
+        .execute()
+    
+    if existing_app.data:
+        eligibility["checks"]["not_already_applied"] = False
+        eligibility["reasons"].append("You have already submitted a CFO application")
+    
+    # Final eligibility
+    all_checks_passed = all(eligibility["checks"].values())
+    eligibility["eligible"] = all_checks_passed
+    
+    if all_checks_passed:
+        eligibility["reasons"] = ["You are eligible to apply as CFO"]
+    
+    logger.info(f"CFO eligibility check for user {current_user.id}: {eligibility}")
+    
+    return eligibility
+
+
+@router.post("/applications/submit", status_code=201)
+async def submit_cfo_application(
+    application: CFOFullApplication,
+    current_user: User = Depends(get_current_user)
+):
+    """Submit full CFO leadership application"""
+    import logging
+    logger = logging.getLogger(__name__)
+    supabase = get_supabase_client()
+    
+    # Verify eligibility first
+    eligibility_check = await check_cfo_eligibility(application.competition_id, current_user)
+    if not eligibility_check["eligible"]:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Not eligible to apply: {', '.join(eligibility_check['reasons'])}"
+        )
+    
+    # Calculate score
+    score_result = calculate_total_score(application)
+    
+    # Prepare application data for storage
+    app_data = {
+        "user_id": current_user.id,
+        "competition_id": application.competition_id,
+        # Step 1
+        "experience_years": application.step1.experience_years.value,
+        "leadership_exposure": application.step1.leadership_exposure.value,
+        "decision_ownership": application.step1.decision_ownership.value,
+        "leadership_willingness": application.step1.leadership_willingness.value,
+        "commitment_level": application.step1.commitment_level.value,
+        # Step 2
+        "capital_allocation": application.step2.capital_allocation.value,
+        "capital_justification": application.step2.capital_justification,
+        "cash_vs_profit": application.step2.cash_vs_profit,
+        "kpi_prioritization": application.step2.kpi_prioritization,
+        # Step 3
+        "dscr_choice": application.step3.dscr_choice.value,
+        "dscr_impact": application.step3.dscr_impact,
+        "cost_priority": application.step3.cost_priority.value,
+        "cfo_mindset": application.step3.cfo_mindset.value,
+        "mindset_explanation": application.step3.mindset_explanation,
+        # Step 4
+        "ethics_choice": application.step4.ethics_choice.value,
+        "culture_vs_results": application.step4.culture_vs_results.value,
+        "why_top_100": application.step4.why_top_100,
+        # Scoring (internal only)
+        "total_score": score_result["final_score"],
+        "raw_score": score_result["total_raw_score"],
+        "leadership_score": score_result["section_scores"]["leadership"],
+        "ethics_score": score_result["section_scores"]["ethics"],
+        "capital_score": score_result["section_scores"]["capital_allocation"],
+        "judgment_score": score_result["section_scores"]["financial_judgment"],
+        "red_flag_count": score_result["red_flag_count"],
+        "red_flags": score_result["red_flags"],
+        "auto_excluded": score_result["auto_exclude"],
+        "exclusion_reason": score_result["exclusion_reason"],
+        # Status
+        "status": "excluded" if score_result["auto_exclude"] else "pending",
+        "submitted_at": datetime.utcnow().isoformat()
+    }
+    
+    try:
+        result = supabase.table("cfo_applications").insert(app_data).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to submit application")
+        
+        logger.info(f"CFO application submitted by user {current_user.id}, score: {score_result['final_score']}, excluded: {score_result['auto_exclude']}")
+        
+        # Return success without revealing score
+        return {
+            "success": True,
+            "message": "Your CFO leadership application has been submitted successfully.",
+            "application_id": result.data[0]["id"],
+            "status": "under_review"
+        }
+        
+    except Exception as e:
+        logger.error(f"CFO application error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to submit application: {str(e)}")
+
+
+@router.get("/applications/my-application")
+async def get_my_cfo_application(
+    competition_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get current user's CFO application status (without revealing score)"""
+    supabase = get_supabase_client()
+    
+    result = supabase.table("cfo_applications")\
+        .select("id, status, submitted_at")\
+        .eq("user_id", current_user.id)\
+        .eq("competition_id", competition_id)\
+        .execute()
+    
+    if not result.data:
+        return {"has_applied": False}
+    
+    app = result.data[0]
+    
+    # Map internal status to user-friendly status
+    status_map = {
+        "pending": "Under Review",
+        "qualified": "Qualified - Top 100",
+        "reserve": "Reserve List",
+        "not_selected": "Not Selected",
+        "excluded": "Not Eligible"
+    }
+    
+    return {
+        "has_applied": True,
+        "application_id": app["id"],
+        "status": status_map.get(app["status"], "Under Review"),
+        "submitted_at": app["submitted_at"]
+    }
+
+
+@router.get("/applications/admin/list")
+async def admin_list_applications(
+    competition_id: str,
+    current_user: User = Depends(get_admin_user)
+):
+    """Admin: List all applications with scores and rankings"""
+    supabase = get_supabase_client()
+    
+    result = supabase.table("cfo_applications")\
+        .select("*, user_profiles(full_name, email)")\
+        .eq("competition_id", competition_id)\
+        .order("total_score", desc=True)\
+        .execute()
+    
+    applications = result.data or []
+    
+    # Add ranking
+    for i, app in enumerate(applications):
+        if not app.get("auto_excluded"):
+            app["rank"] = i + 1
+            app["final_status"] = determine_status(i + 1, app.get("auto_excluded", False))
+        else:
+            app["rank"] = None
+            app["final_status"] = "excluded"
+    
+    return {
+        "total_applications": len(applications),
+        "qualified_count": len([a for a in applications if a["final_status"] == "qualified"]),
+        "reserve_count": len([a for a in applications if a["final_status"] == "reserve"]),
+        "excluded_count": len([a for a in applications if a["final_status"] == "excluded"]),
+        "applications": applications
+    }
+
+
+@router.put("/applications/admin/{application_id}/override")
+async def admin_override_status(
+    application_id: str,
+    new_status: str,
+    reason: str,
+    current_user: User = Depends(get_admin_user)
+):
+    """Admin: Manual override of application status (rare cases)"""
+    import logging
+    logger = logging.getLogger(__name__)
+    supabase = get_supabase_client()
+    
+    valid_statuses = ["qualified", "reserve", "not_selected", "excluded"]
+    if new_status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
+    
+    result = supabase.table("cfo_applications")\
+        .update({
+            "status": new_status,
+            "admin_override": True,
+            "override_reason": reason,
+            "override_by": current_user.id,
+            "override_at": datetime.utcnow().isoformat()
+        })\
+        .eq("id", application_id)\
+        .execute()
+    
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    logger.info(f"Admin {current_user.id} overrode application {application_id} to status {new_status}")
+    
+    return {"success": True, "message": f"Application status updated to {new_status}"}
+
+
+# Legacy endpoint - keep for backward compatibility
 @router.post("/applications", status_code=201)
-async def apply_for_cfo(
+async def apply_for_cfo_legacy(
         data: CFOApplicationCreate,
         current_user: User = Depends(get_current_user),
 ):
-    supabase = get_supabase_client()
-
-    existing = supabase.table("cfo_applications") \
-        .select("id") \
-        .eq("user_id", current_user.id) \
-        .execute()
-
-    if existing.data:
-        raise HTTPException(
-            status_code=400,
-            detail="You have already submitted a CFO application")
-
-    insert_data = {
-        "user_id": current_user.id,
-        "experience_years": data.experience_years,
-        "job_title": data.job_title,
-        "company": data.company,
-        "status": "pending",
-        "applied_at": datetime.utcnow().isoformat()
-    }
-
-    result = supabase.table("cfo_applications").insert(insert_data).execute()
-
-    if not result.data:
-        raise HTTPException(status_code=500,
-                            detail="Failed to submit application")
-
-    return {
-        "message": "CFO application submitted successfully",
-        "application_id": result.data[0]["id"]
-    }
+    """Legacy CFO application endpoint"""
+    raise HTTPException(
+        status_code=400,
+        detail="Please use the new CFO application form at /applications/submit"
+    )
 
 
 # =========================================================
