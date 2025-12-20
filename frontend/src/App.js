@@ -93,6 +93,14 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/cfo-application/:competitionId"
+            element={
+              <ProtectedRoute>
+                <CFOApplication />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
