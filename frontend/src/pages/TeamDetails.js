@@ -13,6 +13,7 @@ import {
   Shield,
   MessageSquare,
   Video,
+  Award,
 } from 'lucide-react';
 import TeamChat from '../components/TeamChat';
 import TeamVideo from '../components/TeamVideo';
@@ -32,6 +33,7 @@ function TeamDetails() {
   const [leaving, setLeaving] = useState(false);
   const [assigningRole, setAssigningRole] = useState(null);
   const [activeTab, setActiveTab] = useState('members'); // members, chat, video
+  const [cfoEligibility, setCfoEligibility] = useState(null);
 
   const roles = ['Analyst', 'Designer', 'Strategist', 'Communicator'];
 
