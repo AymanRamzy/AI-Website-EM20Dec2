@@ -90,7 +90,7 @@ export const AuthProvider = ({ children }) => {
         email: normalizedEmail,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirm`,
+          emailRedirectTo: 'https://modex-cfo.preview.emergentagent.com/auth/confirm',
           data: {
             full_name: full_name,
             role: role
