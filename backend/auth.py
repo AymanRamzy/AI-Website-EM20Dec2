@@ -70,3 +70,14 @@ async def get_admin_user(current_user: User = Depends(get_current_user)) -> User
             detail="Admin access required"
         )
     return current_user
+
+
+import traceback
+
+try:
+    # existing register logic
+    ...
+except Exception as e:
+    print("REGISTER ERROR:", str(e))
+    traceback.print_exc()
+    raise HTTPException(status_code=500, detail=str(e))
