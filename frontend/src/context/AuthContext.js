@@ -80,12 +80,11 @@ export const AuthProvider = ({ children }) => {
     try {
       const normalizedEmail = email.trim().toLowerCase();
       
-      // Use Supabase Auth signUp with email redirect
+      // Use Supabase Auth signUp
       const { data, error } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,
         options: {
-          emailRedirectTo: 'https://modex-cfo.preview.emergentagent.com/auth/confirm',
           data: {
             full_name: full_name,
             role: role
@@ -94,6 +93,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (error) {
+        console.error('Supabase signup error:', error);
         // Handle specific Supabase errors
         if (error.message.includes('already registered')) {
           return {
