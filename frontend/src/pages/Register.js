@@ -46,7 +46,13 @@ function Register() {
     );
 
     if (result.success) {
-      navigate('/dashboard');
+      // Redirect to login with email pre-filled and success message
+      navigate('/login', { 
+        state: { 
+          email: result.email,
+          message: result.message 
+        } 
+      });
     } else {
       setError(result.error);
     }
