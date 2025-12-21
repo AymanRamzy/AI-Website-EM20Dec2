@@ -21,6 +21,8 @@ import TeamDetails from './pages/TeamDetails';
 import CompetitionDetails from './pages/CompetitionDetails';
 import AdminDashboard from './pages/AdminDashboard';
 import CFOApplication from './pages/CFOApplication';
+import CFOApplicationsList from './pages/CFOApplicationsList';
+import CFOApplicationDetail from './pages/CFOApplicationDetail';
 import './App.css';
 
 function App() {
