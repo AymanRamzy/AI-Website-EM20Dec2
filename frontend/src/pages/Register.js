@@ -32,13 +32,8 @@ const Register = () => {
     );
 
     if (result.success) {
-      // Redirect to login with email pre-filled and success message
-      navigate('/login', { 
-        state: { 
-          email: result.email,
-          message: result.message 
-        } 
-      });
+      // Redirect to check-email page (NOT login, NOT dashboard)
+      navigate('/check-email');
     } else {
       setError(result.error);
     }
