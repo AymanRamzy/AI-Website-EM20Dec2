@@ -297,59 +297,6 @@ function AdminDashboard() {
           </div>
         )}
 
-        {activeTab === 'applications' && (
-          <div className="bg-gray-800 rounded-lg overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-700">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Applicant</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Experience</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Certifications</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Score</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-700">
-                {applications.map(app => (
-                  <tr key={app.id} className="hover:bg-gray-750">
-                    <td className="px-4 py-3">
-                      <div className="text-white">{app.job_title}</div>
-                      <div className="text-gray-400 text-sm">{app.industry}</div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-300">{app.years_experience} years</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {(app.certifications || []).map((cert, i) => (
-                          <span key={i} className="bg-blue-900 text-blue-300 px-2 py-0.5 rounded text-xs">{cert}</span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-white font-medium">{app.final_score?.toFixed(1) || app.auto_score?.toFixed(1) || '0'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        app.status === 'approved' ? 'bg-green-900 text-green-300' :
-                        app.status === 'rejected' ? 'bg-red-900 text-red-300' :
-                        app.status === 'pending' ? 'bg-yellow-900 text-yellow-300' :
-                        'bg-gray-700 text-gray-300'
-                      }`}>
-                        {app.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 space-x-2">
-                      <button onClick={() => reviewApplication(app.id, 'approved')} className="text-green-400 hover:text-green-300 text-sm">Approve</button>
-                      <button onClick={() => reviewApplication(app.id, 'rejected')} className="text-red-400 hover:text-red-300 text-sm">Reject</button>
-                    </td>
-                  </tr>
-                ))}
-                {applications.length === 0 && (
-                  <tr><td colSpan="6" className="px-4 py-8 text-center text-gray-400">No applications yet</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-
         {loading && <div className="text-center py-8 text-gray-400">Loading...</div>}
       </div>
     </div>
