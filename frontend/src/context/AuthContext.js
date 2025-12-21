@@ -74,59 +74,43 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Register function - uses Supabase Auth directly
+  // Register function - uses backend API
   // Does NOT auto-login, redirects to check-email page
   const register = async (email, password, full_name, role = 'participant') => {
     try {
       const normalizedEmail = email.trim().toLowerCase();
       
-      // Use Supabase Auth signUp
-      const { data, error } = await supabase.auth.signUp({
+      // Use backend API for registration (handles Supabase Auth)
+      const response = await axios.post(`${API_URL}/api/cfo/auth/register`, {
         email: normalizedEmail,
         password,
-        options: {
-          data: {
-            full_name: full_name,
-            role: role
-          }
-        }
+        full_name,
+        role
+      }, {
+        timeout: 15000
       });
 
-      if (error) {
-        console.error('Supabase signup error:', error);
-        // Handle specific Supabase errors
-        if (error.message.includes('already registered')) {
-          return {
-            success: false,
-            error: 'This email is already registered. Please sign in instead.'
-          };
-        }
-        return {
-          success: false,
-          error: error.message || 'Registration failed'
-        };
-      }
-
-      // Check if user was created (even if not confirmed)
-      if (data?.user) {
-        // Profile will be created by database trigger
-        // No need to call backend API
-        return { 
-          success: true,
-          email: normalizedEmail,
-          message: 'Registration successful! Please check your email to confirm your account.'
-        };
-      }
-
-      return {
-        success: false,
-        error: 'Registration failed. Please try again.'
+      // Registration successful
+      return { 
+        success: true,
+        email: normalizedEmail,
+        message: 'Registration successful! Please check your email to confirm your account.'
       };
     } catch (error) {
       console.error('Registration error:', error);
+      const errorMessage = error.response?.data?.detail || error.message || 'Registration failed';
+      
+      // Handle specific errors
+      if (errorMessage.includes('already registered') || errorMessage.includes('409')) {
+        return {
+          success: false,
+          error: 'This email is already registered. Please sign in instead.'
+        };
+      }
+      
       return {
         success: false,
-        error: error.message || 'Registration failed'
+        error: errorMessage
       };
     }
   };
