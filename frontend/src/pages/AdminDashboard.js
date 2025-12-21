@@ -61,17 +61,6 @@ function AdminDashboard() {
     setLoading(false);
   };
 
-  const fetchApplications = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/admin/cfo-applications`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) setApplications(await res.json());
-    } catch (e) { setError('Failed to load applications'); }
-    setLoading(false);
-  };
-
   const updateUserRole = async (userId, role) => {
     try {
       const res = await fetch(`${BACKEND_URL}/api/admin/users/${userId}`, {
