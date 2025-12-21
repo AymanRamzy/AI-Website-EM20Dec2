@@ -127,6 +127,116 @@ async def delete_competition(comp_id: str, current_user: User = Depends(get_admi
     response = supabase.table('competitions').delete().eq('id', comp_id).execute()
     return {"message": "Competition deleted"}
 
+
+@router.get("/competitions/{competition_id}/cfo-applications")
+async def get_competition_cfo_applications(
+    competition_id: str,
+    current_user: User = Depends(get_admin_user)
+):
+    """Get all CFO applications for a specific competition (Admin only)"""
+    import logging
+    logger = logging.getLogger(__name__)
+    supabase = get_supabase_client()
+    
+    # Verify competition exists
+    comp_check = supabase.table('competitions').select('id, title').eq('id', competition_id).execute()
+    if not comp_check.data:
+        raise HTTPException(status_code=404, detail="Competition not found")
+    
+    # Get all applications for this competition with user info
+    response = supabase.table('cfo_applications')\
+        .select('*, user_profiles(full_name, email)')\
+        .eq('competition_id', competition_id)\
+        .order('total_score', desc=True)\
+        .execute()
+    
+    applications = response.data or []
+    
+    # Add ranking
+    rank = 1
+    for app in applications:
+        if not app.get('auto_excluded'):
+            app['rank'] = rank
+            rank += 1
+        else:
+            app['rank'] = None
+    
+    logger.info(f"Admin {current_user.id} viewed {len(applications)} applications for competition {competition_id}")
+    
+    return {
+        "competition": comp_check.data[0],
+        "total_count": len(applications),
+        "applications": applications
+    }
+
+
+@router.get("/competitions/{competition_id}/cfo-applications/{application_id}")
+async def get_application_detail(
+    competition_id: str,
+    application_id: str,
+    current_user: User = Depends(get_admin_user)
+):
+    """Get detailed view of a single CFO application (Admin only)"""
+    supabase = get_supabase_client()
+    
+    response = supabase.table('cfo_applications')\
+        .select('*, user_profiles(full_name, email)')\
+        .eq('id', application_id)\
+        .eq('competition_id', competition_id)\
+        .execute()
+    
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    return response.data[0]
+
+
+@router.put("/competitions/{competition_id}/cfo-applications/{application_id}/status")
+async def update_application_status(
+    competition_id: str,
+    application_id: str,
+    new_status: str,
+    reason: str = None,
+    current_user: User = Depends(get_admin_user)
+):
+    """Update CFO application status (Admin only)"""
+    import logging
+    logger = logging.getLogger(__name__)
+    supabase = get_supabase_client()
+    
+    valid_statuses = ["qualified", "reserve", "not_selected", "excluded", "pending"]
+    if new_status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
+    
+    # Verify application exists and belongs to competition
+    app_check = supabase.table('cfo_applications')\
+        .select('id')\
+        .eq('id', application_id)\
+        .eq('competition_id', competition_id)\
+        .execute()
+    
+    if not app_check.data:
+        raise HTTPException(status_code=404, detail="Application not found in this competition")
+    
+    # Update status
+    update_data = {
+        "status": new_status,
+        "admin_override": True,
+        "override_reason": reason,
+        "override_by": current_user.id,
+        "override_at": datetime.utcnow().isoformat()
+    }
+    
+    response = supabase.table('cfo_applications')\
+        .update(update_data)\
+        .eq('id', application_id)\
+        .execute()
+    
+    logger.info(f"Admin {current_user.id} changed application {application_id} status to {new_status}")
+    
+    return {"success": True, "message": f"Application status updated to {new_status}"}
+
+
 @router.get("/cfo-applications", response_model=List[CFOApplicationResponse])
 async def get_cfo_applications(
     status: Optional[str] = None,
