@@ -134,9 +134,12 @@ async def login(user_credentials: UserLogin):
     logger = logging.getLogger(__name__)
     supabase = get_supabase_client()
 
+    # Email normalization (MANDATORY)
+    normalized_email = user_credentials.email.strip().lower()
+
     try:
         auth_response = supabase.auth.sign_in_with_password({
-            "email": user_credentials.email,
+            "email": normalized_email,
             "password": user_credentials.password
         })
     except Exception as e:
@@ -149,7 +152,7 @@ async def login(user_credentials: UserLogin):
                             detail="Incorrect email or password")
 
     user_id = auth_response.user.id
-    user_email = auth_response.user.email or user_credentials.email
+    user_email = auth_response.user.email or normalized_email
 
     try:
         profile_result = supabase.table("user_profiles") \
