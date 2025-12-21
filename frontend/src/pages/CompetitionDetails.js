@@ -338,6 +338,32 @@ function CompetitionDetails() {
             </div>
           )}
         </div>
+
+        {/* Admin Actions - View Applications */}
+        {user?.role === 'admin' && (
+          <div className="mt-6 bg-white rounded-xl p-6 border-2 border-modex-secondary/30">
+            <h3 className="text-xl font-bold text-modex-primary mb-4 flex items-center">
+              <Award className="w-6 h-6 mr-2" />
+              Admin Actions
+            </h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              <button
+                onClick={() => navigate(`/competitions/${competitionId}/applications`)}
+                className="bg-modex-secondary text-white px-6 py-4 rounded-lg font-bold text-lg hover:bg-modex-primary transition-colors flex items-center justify-center"
+              >
+                <Award className="w-5 h-5 mr-2" />
+                View CFO Applications
+              </button>
+              <Link
+                to="/admin"
+                className="bg-gray-600 text-white px-6 py-4 rounded-lg font-bold text-lg hover:bg-gray-700 transition-colors flex items-center justify-center"
+              >
+                <Users className="w-5 h-5 mr-2" />
+                Admin Dashboard
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
