@@ -145,7 +145,6 @@ function AdminDashboard() {
     { id: 'overview', label: 'Overview' },
     { id: 'users', label: 'Users' },
     { id: 'competitions', label: 'Competitions' },
-    { id: 'applications', label: 'CFO Applications' },
   ];
 
   return (

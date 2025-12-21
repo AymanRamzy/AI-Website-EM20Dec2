@@ -27,6 +27,7 @@ function CompetitionDetails() {
   const [registering, setRegistering] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [applicationCount, setApplicationCount] = useState(0);
 
   useEffect(() => {
     loadCompetitionData();
