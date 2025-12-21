@@ -144,8 +144,9 @@ async def get_competition_cfo_applications(
         raise HTTPException(status_code=404, detail="Competition not found")
     
     # Get all applications for this competition with user info
+    # Use explicit relationship name to avoid ambiguity (user_id vs override_by)
     response = supabase.table('cfo_applications')\
-        .select('*, user_profiles(full_name, email)')\
+        .select('*, user_profiles!cfo_applications_user_id_fkey(full_name, email)')\
         .eq('competition_id', competition_id)\
         .order('total_score', desc=True)\
         .execute()
