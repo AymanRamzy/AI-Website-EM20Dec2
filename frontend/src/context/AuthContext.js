@@ -61,7 +61,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (email, password, full_name, role = 'participant') => {
     try {
-      await axios.post(`${API_URL}/api/cfo/auth/register`, {
+      const response = await axios.post(`${API_URL}/api/cfo/auth/register`, {
         email,
         password,
         full_name,
@@ -69,7 +69,12 @@ export const AuthProvider = ({ children }) => {
       }, {
         timeout: 10000
       });
-      return await login(email, password);
+      // Return success with email for redirect - NO auto-login
+      return { 
+        success: true, 
+        email: email.trim().toLowerCase(),
+        message: 'Registration successful! Please sign in.'
+      };
     } catch (error) {
       return {
         success: false,
