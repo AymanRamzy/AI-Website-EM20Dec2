@@ -657,24 +657,29 @@ async def create_team(
                 detail="You are already in a team for this competition"
             )
     
-    # Create team atomically using RPC (single transaction)
+    # Create team - database trigger automatically adds leader to team_members
     try:
-        result = supabase.rpc(
-            "create_team_with_leader",
-            {
-                "p_team_name": team_data.team_name,
-                "p_competition_id": team_data.competition_id,
-                "p_user_id": current_user.id,
-                "p_user_name": current_user.full_name
-            }
-        ).execute()
+        # Step 1: Insert into teams table (trigger creates team_member with team_role='leader')
+        team_result = supabase.table("teams").insert({
+            "team_name": team_data.team_name,
+            "competition_id": team_data.competition_id,
+            "leader_id": current_user.id
+        }).execute()
         
-        if not result.data:
+        if not team_result.data:
             raise HTTPException(status_code=500, detail="Failed to create team")
+        
+        team = team_result.data[0]
+        team_id = team["id"]
+        
+        # Step 2: Update the auto-created team_member with user_name
+        supabase.table("team_members").update({
+            "user_name": current_user.full_name
+        }).eq("team_id", team_id).eq("user_id", current_user.id).execute()
         
         logger.info(f"Team created by qualified CFO {current_user.id}")
         
-        return result.data
+        return team
         
     except HTTPException:
         raise
