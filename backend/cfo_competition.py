@@ -34,61 +34,98 @@ router = APIRouter(prefix="/api/cfo", tags=["CFO Competition"])
 # =========================================================
 
 
-@router.post("/auth/register", response_model=UserResponse)
+@router.post("/auth/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserCreate):
     import logging
     logger = logging.getLogger(__name__)
     supabase = get_supabase_client()
 
+    # Email normalization (MANDATORY)
+    normalized_email = user_data.email.strip().lower()
+
     try:
+        # Step 1: Create user in Supabase Auth
         auth_response = supabase.auth.sign_up({
-            "email": user_data.email,
+            "email": normalized_email,
             "password": user_data.password
         })
 
         if not auth_response or not auth_response.user:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                detail="Failed to create user account")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to create user account"
+            )
 
         user_id = auth_response.user.id
         now = datetime.utcnow().isoformat()
 
-        profile_data = {
-            "id": user_id,
-            "email": user_data.email,
-            "full_name": user_data.full_name,
-            "role": user_data.role.value,
-            "created_at": now,
-            "updated_at": now
-        }
+        # Step 2: Check if profile was auto-created by trigger
+        existing_profile = supabase.table("user_profiles")\
+            .select("id")\
+            .eq("id", user_id)\
+            .execute()
 
-        profile_response = supabase.table("user_profiles").insert(profile_data).execute()
+        if existing_profile.data:
+            # Profile exists (created by trigger), update it with full details
+            logger.info(f"Updating auto-created profile for user {user_id}")
+            supabase.table("user_profiles").update({
+                "email": normalized_email,
+                "full_name": user_data.full_name,
+                "role": user_data.role.value,
+                "updated_at": now
+            }).eq("id", user_id).execute()
+        else:
+            # No trigger, create profile manually
+            logger.info(f"Creating new profile for user {user_id}")
+            profile_data = {
+                "id": user_id,
+                "email": normalized_email,
+                "full_name": user_data.full_name,
+                "role": user_data.role.value,
+                "created_at": now,
+                "updated_at": now
+            }
+            supabase.table("user_profiles").insert(profile_data).execute()
 
-        if not profile_response.data:
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to create user profile"
-            )
-
-        return UserResponse(id=user_id,
-                            email=user_data.email,
-                            full_name=user_data.full_name,
-                            role=user_data.role,
-                            created_at=datetime.fromisoformat(now))
+        logger.info(f"Registration successful for {normalized_email}")
+        
+        return UserResponse(
+            id=user_id,
+            email=normalized_email,
+            full_name=user_data.full_name,
+            role=user_data.role,
+            created_at=datetime.fromisoformat(now)
+        )
 
     except HTTPException:
         raise
     except Exception as e:
         error_str = str(e).lower()
-        logger.error(f"Registration error for {user_data.email}: {e}")
+        logger.error(f"Registration error for {normalized_email}: {e}")
         
-        if "already registered" in error_str or "already exists" in error_str or "422" in error_str:
-            raise HTTPException(status_code=400,
-                                detail="Email already registered. Please try logging in instead.")
-        if "password" in error_str:
-            raise HTTPException(status_code=400,
-                                detail="Password does not meet requirements. Must be at least 6 characters.")
-        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+        # 409 for duplicate email
+        if "already registered" in error_str or "user already registered" in error_str:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already registered. Please try logging in instead."
+            )
+        # Password requirements
+        if "password" in error_str and ("weak" in error_str or "short" in error_str or "6" in error_str):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must be at least 6 characters."
+            )
+        # Rate limiting
+        if "security purposes" in error_str or "after" in error_str and "seconds" in error_str:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many attempts. Please wait a moment and try again."
+            )
+        # Generic server error
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Registration failed: {str(e)}"
+        )
 
 
 @router.post("/auth/login")
