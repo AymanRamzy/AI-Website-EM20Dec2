@@ -364,22 +364,13 @@ function CompetitionDetails() {
               <Award className="w-6 h-6 mr-2" />
               Admin Actions
             </h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              <button
-                onClick={() => navigate(`/competitions/${competitionId}/applications`)}
-                className="bg-modex-secondary text-white px-6 py-4 rounded-lg font-bold text-lg hover:bg-modex-primary transition-colors flex items-center justify-center"
-              >
-                <Award className="w-5 h-5 mr-2" />
-                View CFO Applications
-              </button>
-              <Link
-                to="/admin"
-                className="bg-gray-600 text-white px-6 py-4 rounded-lg font-bold text-lg hover:bg-gray-700 transition-colors flex items-center justify-center"
-              >
-                <Users className="w-5 h-5 mr-2" />
-                Admin Dashboard
-              </Link>
-            </div>
+            <button
+              onClick={() => navigate(`/competitions/${competitionId}/applications`)}
+              className="w-full bg-modex-secondary text-white px-6 py-4 rounded-lg font-bold text-lg hover:bg-modex-primary transition-colors flex items-center justify-center"
+            >
+              <Award className="w-5 h-5 mr-2" />
+              View Applications ({applicationCount})
+            </button>
           </div>
         )}
       </div>
