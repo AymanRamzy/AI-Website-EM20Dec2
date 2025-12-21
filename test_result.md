@@ -615,6 +615,72 @@ agent_communication:
       
       PHASE 1.6 FRONTEND INTEGRATION: COMPLETE AND READY FOR PRODUCTION
 
+  - task: "Admin View Applications Button on Competition Details"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/CompetitionDetails.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: |
+          Added "View Applications (X)" button visible only to admin users.
+          Button shows count of applications for the competition.
+          Navigates to /competitions/{competition_id}/applications route.
+          Removed link to global Admin Dashboard. Ready for testing.
+
+  - task: "CFO Applications List Page (Admin)"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/CFOApplicationsList.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: |
+          Simplified applications list page with table layout.
+          Columns: Name, Email, Status, Score, View button.
+          Simple filter: All | Submitted | Qualified | Reserve | Excluded.
+          No stats cards, no charts - minimal design matching team list UX.
+          Ready for testing.
+
+  - task: "CFO Application Detail Page (Admin)"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/CFOApplicationDetail.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: |
+          Application detail page with read-only answers display.
+          Admin actions: Qualify, Reserve, Exclude buttons.
+          One-click status update via PUT API endpoint.
+          Shows scoring breakdown and red flags if any.
+          Ready for testing.
+
+  - task: "Remove CFO Applications Tab from Admin Dashboard"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/AdminDashboard.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: |
+          Removed "CFO Applications" tab and related logic from AdminDashboard.js.
+          Admin Dashboard now only has: Overview, Users, Competitions tabs.
+          CFO applications are now managed via competition flow, not global dashboard.
+          Ready for verification.
+
   - agent: "testing"
     message: |
       🎉 COMPREHENSIVE TEAM MANAGEMENT FLOW TESTING COMPLETED
