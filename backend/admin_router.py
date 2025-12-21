@@ -180,8 +180,9 @@ async def get_application_detail(
     """Get detailed view of a single CFO application (Admin only)"""
     supabase = get_supabase_client()
     
+    # Use explicit relationship name to avoid ambiguity
     response = supabase.table('cfo_applications')\
-        .select('*, user_profiles(full_name, email)')\
+        .select('*, user_profiles!cfo_applications_user_id_fkey(full_name, email)')\
         .eq('id', application_id)\
         .eq('competition_id', competition_id)\
         .execute()
