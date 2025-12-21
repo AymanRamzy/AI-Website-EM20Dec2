@@ -119,8 +119,6 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     localStorage.removeItem('token');
     delete axios.defaults.headers.common['Authorization'];
-    // Also sign out from Supabase
-    supabase.auth.signOut();
   };
 
   return (
