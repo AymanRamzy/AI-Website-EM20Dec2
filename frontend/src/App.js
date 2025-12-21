@@ -23,6 +23,8 @@ import AdminDashboard from './pages/AdminDashboard';
 import CFOApplication from './pages/CFOApplication';
 import CFOApplicationsList from './pages/CFOApplicationsList';
 import CFOApplicationDetail from './pages/CFOApplicationDetail';
+import AuthConfirm from './pages/AuthConfirm';
+import CheckEmail from './pages/CheckEmail';
 import './App.css';
 
 function App() {
