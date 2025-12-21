@@ -47,6 +47,8 @@ function App() {
           {/* Auth routes (no layout) */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/auth/confirm" element={<AuthConfirm />} />
+          <Route path="/check-email" element={<CheckEmail />} />
           
           {/* Protected routes (no layout) */}
           <Route
