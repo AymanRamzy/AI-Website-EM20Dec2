@@ -44,10 +44,15 @@ async def register(user_data: UserCreate):
     normalized_email = user_data.email.strip().lower()
 
     try:
-        # Step 1: Create user in Supabase Auth
-        auth_response = supabase.auth.sign_up({
+        # Step 1: Create user in Supabase Auth using Admin API (auto-confirms email)
+        # Using service role key allows bypassing email confirmation
+        auth_response = supabase.auth.admin.create_user({
             "email": normalized_email,
-            "password": user_data.password
+            "password": user_data.password,
+            "email_confirm": True,  # Auto-confirm email
+            "user_metadata": {
+                "full_name": user_data.full_name
+            }
         })
 
         if not auth_response or not auth_response.user:
