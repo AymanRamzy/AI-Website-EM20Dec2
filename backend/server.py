@@ -8,6 +8,15 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
+# STARTUP SAFETY CHECK: Fail loudly if critical env vars missing
+import os
+_SUPABASE_URL = os.getenv("SUPABASE_URL")
+_SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+if not _SUPABASE_URL:
+    raise RuntimeError("STARTUP FAILED: SUPABASE_URL environment variable is missing")
+if not _SUPABASE_SERVICE_KEY:
+    raise RuntimeError("STARTUP FAILED: SUPABASE_SERVICE_ROLE_KEY environment variable is missing")
+
 from supabase_client import get_supabase_client
 from cfo_competition import router as cfo_router
 from admin_router import router as admin_router
