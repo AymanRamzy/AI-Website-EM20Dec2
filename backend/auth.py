@@ -60,7 +60,11 @@ async def get_current_user(
         )
 
 async def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Admin check: user {current_user.email} has role {current_user.role}")
     if current_user.role != UserRole.ADMIN:
+        logger.warning(f"Admin access denied for user {current_user.email} with role {current_user.role}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required"
