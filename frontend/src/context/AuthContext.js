@@ -1,15 +1,10 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabaseClient';
 
 const AuthContext = createContext();
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || '';
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
-
-// Create Supabase client for auth
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
