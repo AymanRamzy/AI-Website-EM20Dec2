@@ -1,6 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
-import { supabase } from '../lib/supabaseClient';
 
 const AuthContext = createContext();
 
