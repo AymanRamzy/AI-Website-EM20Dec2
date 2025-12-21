@@ -357,7 +357,7 @@ function CompetitionDetails() {
           )}
         </div>
 
-        {/* Admin Actions - View Applications */}
+        {/* Admin Actions - Single View Applications Button - v2 */}
         {user?.role === 'admin' && (
           <div className="mt-6 bg-white rounded-xl p-6 border-2 border-modex-secondary/30">
             <h3 className="text-xl font-bold text-modex-primary mb-4 flex items-center">
