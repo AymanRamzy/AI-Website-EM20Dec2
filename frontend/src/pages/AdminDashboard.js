@@ -126,19 +126,6 @@ function AdminDashboard() {
     } catch (e) { setError('Failed to delete competition'); }
   };
 
-  const reviewApplication = async (appId, status, manual_score = null) => {
-    try {
-      const body = { status };
-      if (manual_score !== null) body.manual_score = manual_score;
-      const res = await fetch(`${BACKEND_URL}/api/admin/cfo-applications/${appId}`, {
-        method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      if (res.ok) fetchApplications();
-    } catch (e) { setError('Failed to review application'); }
-  };
-
   const tabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'users', label: 'Users' },
