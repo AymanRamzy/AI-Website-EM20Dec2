@@ -38,50 +38,40 @@ export const AuthProvider = ({ children }) => {
     loadUser();
   }, [token]);
 
-  const login = async (email, password) => {
-    try {
-      const response = await axios.post(`${API_URL}/api/cfo/auth/login`, {
-        email,
-        password,
-      }, {
-        timeout: 10000
-      });
-      const { access_token, user: userData } = response.data;
-      setToken(access_token);
-      setUser(userData);
-      localStorage.setItem('token', access_token);
-      return { success: true };
-    } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.detail || error.message || 'Login failed'
-      };
-    }
-  };
+const login = async (email, password) => {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password
+  });
 
-  const register = async (email, password, full_name, role = 'participant') => {
-    try {
-      const response = await axios.post(`${API_URL}/api/cfo/auth/register`, {
-        email,
-        password,
-        full_name,
-        role,
-      }, {
-        timeout: 10000
-      });
-      // Return success with email for redirect - NO auto-login
-      return { 
-        success: true, 
-        email: email.trim().toLowerCase(),
-        message: 'Registration successful! Please sign in.'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.detail || error.message || 'Registration failed'
-      };
+  if (error) {
+    if (error.message.toLowerCase().includes("confirm")) {
+      throw new Error("Please verify your email before logging in.");
     }
-  };
+    throw error;
+  }
+
+  return data;
+};
+
+
+const register = async (email, password) => {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: "https://modex-cfo.preview.emergentagent.com/auth/confirm"
+    }
+  });
+
+  if (error) throw error;
+
+  // 🚫 DO NOT AUTO LOGIN
+  return { success: true };
+};
+
+
+
 
   const logout = () => {
     setUser(null);
