@@ -114,18 +114,8 @@ export const AuthProvider = ({ children }) => {
 
       // Check if user was created (even if not confirmed)
       if (data?.user) {
-        // Create user profile in our database via backend
-        try {
-          await axios.post(`${API_URL}/api/cfo/auth/create-profile`, {
-            id: data.user.id,
-            email: normalizedEmail,
-            full_name: full_name,
-            role: role
-          });
-        } catch (profileError) {
-          console.warn('Profile creation via backend failed, may be created by trigger:', profileError);
-        }
-
+        // Profile will be created by database trigger
+        // No need to call backend API
         return { 
           success: true,
           email: normalizedEmail,
