@@ -49,6 +49,14 @@ function Login() {
             <p className="text-gray-600">Sign in to your account</p>
           </div>
 
+          {/* Success Message */}
+          {successMessage && (
+            <div className="mb-4 bg-green-50 border-2 border-green-200 rounded-lg p-3 flex items-start">
+              <CheckCircle className="w-5 h-5 text-green-600 mr-2 flex-shrink-0 mt-0.5" />
+              <p className="text-green-800 text-sm">{successMessage}</p>
+            </div>
+          )}
+
           {/* Error Alert */}
           {error && (
             <div className="mb-4 bg-red-50 border-2 border-red-200 rounded-lg p-3 flex items-start">
