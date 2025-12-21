@@ -104,8 +104,15 @@
 
 user_problem_statement: |
   Build a CFO Competition Management System with authentication, team management, competition creation,
-  task assignment, judge scoring, and leaderboard features. Currently implementing Phase 1.6: 
-  Database architecture refactoring and authentication flow testing.
+  task assignment, judge scoring, and leaderboard features. 
+  
+  CURRENT FOCUS: Admin View for CFO Applications within Competition Flow
+  - Admins must be able to review CFO applications per competition, inside the normal Competition flow
+  - No global dashboards, no analytics screens
+  - Simple lists, competition-scoped, same design as Teams list
+  - Admin sees "View Applications (X)" button on competition details
+  - Applications list page with simple filter (All | Submitted | Qualified | Reserve | Excluded)
+  - Application detail page with Qualify/Reserve/Exclude actions
 
 backend:
   - task: "Database Connection Architecture Refactoring"
