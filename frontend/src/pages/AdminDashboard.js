@@ -28,7 +28,6 @@ function AdminDashboard() {
   useEffect(() => {
     if (activeTab === 'users') fetchUsers();
     else if (activeTab === 'competitions') fetchCompetitions();
-    else if (activeTab === 'applications') fetchApplications();
   }, [activeTab]);
 
   const fetchStats = async () => {
