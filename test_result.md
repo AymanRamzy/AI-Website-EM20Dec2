@@ -477,13 +477,63 @@ metadata:
 
 test_plan:
   current_focus: 
-    - "Dashboard My Team Tab"
+    - "Admin View Applications Button on Competition Details"
+    - "CFO Applications List Page (Admin)"
+    - "CFO Application Detail Page (Admin)"
+    - "Admin CFO Applications List Endpoint"
+    - "Admin Application Status Update Endpoint"
   stuck_tasks: 
     - "Dashboard My Team Tab"
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
+  - agent: "main"
+    message: |
+      ADMIN CFO APPLICATIONS VIEW IMPLEMENTATION COMPLETE
+      
+      IMPLEMENTED FEATURES:
+      1. Backend Endpoint: GET /api/admin/competitions/{competition_id}/cfo-applications
+         - Returns applications filtered by competition_id
+         - Joins with user_profiles for full_name, email
+         - Sorted by total_score DESC
+         
+      2. Backend Endpoint: PUT /api/admin/competitions/{competition_id}/cfo-applications/{application_id}/status
+         - Updates application status (qualified, reserve, excluded, pending)
+         - Records admin override info
+         
+      3. Frontend: CompetitionDetails.js
+         - Added "View Applications (X)" button for admin users only
+         - Shows count of applications for the competition
+         - Removed link to global Admin Dashboard
+         
+      4. Frontend: CFOApplicationsList.js (REWRITTEN)
+         - Simple table: Name | Email | Status | Score | View
+         - Simple filter: All | Submitted | Qualified | Reserve | Excluded
+         - NO stats cards, NO charts - minimal design
+         
+      5. Frontend: CFOApplicationDetail.js
+         - Read-only application answers
+         - Admin actions: Qualify, Reserve, Exclude buttons
+         
+      6. Frontend: AdminDashboard.js
+         - REMOVED "CFO Applications" tab
+         - Only Overview, Users, Competitions tabs remain
+         
+      TEST USER FOR ADMIN FLOW:
+      - Admin email: ayman.ramzy88@gmail.com (role: admin)
+      - Competition with applications: 39c75cda-... (CFO Excellence Competition 2025)
+      - 1 CFO application exists in database
+      
+      PLEASE TEST:
+      1. Login as admin user
+      2. Navigate to competition details for competition ID starting with 39c75cda
+      3. Verify "View Applications (X)" button shows with count
+      4. Click button and verify applications list loads
+      5. Test filter functionality
+      6. Click View on an application
+      7. Test Qualify/Reserve/Exclude buttons
+      8. Verify Admin Dashboard no longer has CFO Applications tab
   - agent: "main"
     message: |
       Phase 1.6 - Database Architecture Refactoring Complete
