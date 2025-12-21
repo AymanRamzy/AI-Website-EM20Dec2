@@ -44,7 +44,7 @@ async def register(user_data: UserCreate):
     normalized_email = user_data.email.strip().lower()
 
     try:
-        # Step 1: Create user in Supabase Auth
+        # Step 1: Create user in Supabase Auth (email confirmation will be required)
         auth_response = supabase.auth.sign_up({
             "email": normalized_email,
             "password": user_data.password,
@@ -61,14 +61,6 @@ async def register(user_data: UserCreate):
 
         user_id = auth_response.user.id
         now = datetime.utcnow().isoformat()
-        
-        # Step 2: Auto-confirm email via RPC (bypasses email verification)
-        try:
-            supabase.rpc('confirm_user_email', {'user_email': normalized_email}).execute()
-            logger.info(f"Email auto-confirmed for {normalized_email}")
-        except Exception as confirm_error:
-            # RPC might not exist yet - log but don't fail registration
-            logger.warning(f"Could not auto-confirm email (RPC may not exist): {confirm_error}")
 
         # Step 2: Check if profile was auto-created by trigger
         existing_profile = supabase.table("user_profiles")\
@@ -98,7 +90,7 @@ async def register(user_data: UserCreate):
             }
             supabase.table("user_profiles").insert(profile_data).execute()
 
-        logger.info(f"Registration successful for {normalized_email}")
+        logger.info(f"Registration successful for {normalized_email} (email confirmation required)")
         
         return UserResponse(
             id=user_id,
