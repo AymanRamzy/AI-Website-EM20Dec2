@@ -33,6 +33,23 @@ function CompetitionDetails() {
     loadCompetitionData();
   }, [competitionId]);
 
+  // Fetch application count for admins
+  useEffect(() => {
+    const fetchApplicationCount = async () => {
+      if (user?.role === 'admin' && competitionId) {
+        try {
+          const response = await axios.get(
+            `${API_URL}/api/admin/competitions/${competitionId}/cfo-applications`
+          );
+          setApplicationCount(response.data?.total_count || 0);
+        } catch (err) {
+          console.error('Failed to fetch application count:', err);
+        }
+      }
+    };
+    fetchApplicationCount();
+  }, [user, competitionId]);
+
   const loadCompetitionData = async () => {
     try {
       // Load competition details
