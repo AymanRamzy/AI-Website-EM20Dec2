@@ -665,6 +665,37 @@ agent_communication:
       - Dashboard My Team tab has caching issue - shows old team data after user leaves team
       - Team data not refreshing properly in dashboard after leave team action
       - Need to investigate /api/cfo/teams/my-team endpoint or dashboard state management
+
+  - task: "Admin CFO Applications List Endpoint"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/admin_router.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: |
+          GET /api/admin/competitions/{competition_id}/cfo-applications endpoint implemented.
+          Returns applications filtered by competition_id with user profile data joined.
+          Sorted by total_score DESC. Returns application_id, user_id, full_name, email, status, total_score, created_at.
+          Ready for testing.
+
+  - task: "Admin Application Status Update Endpoint"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/admin_router.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: |
+          PUT /api/admin/competitions/{competition_id}/cfo-applications/{application_id}/status endpoint implemented.
+          Allows admin to update application status to: qualified, reserve, excluded, pending.
+          Records admin override information. Ready for testing.
       
       EDGE CASES TESTED:
       - Competition filtering (only registration_open competitions shown)
