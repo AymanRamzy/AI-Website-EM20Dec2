@@ -25,6 +25,7 @@ import CFOApplicationsList from './pages/CFOApplicationsList';
 import CFOApplicationDetail from './pages/CFOApplicationDetail';
 import AuthConfirm from './pages/AuthConfirm';
 import CheckEmail from './pages/CheckEmail';
+import ProfileSetup from './pages/ProfileSetup';
 import './App.css';
 
 function App() {
