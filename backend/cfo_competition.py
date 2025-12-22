@@ -523,11 +523,11 @@ async def upload_cv(
         # First try to remove existing file (ignore errors)
         try:
             supabase.storage.from_("cfo-cvs").remove([file_path])
-        except:
+        except Exception:
             pass
         
         # Upload new file
-        result = supabase.storage.from_("cfo-cvs").upload(
+        supabase.storage.from_("cfo-cvs").upload(
             file_path,
             contents,
             file_options={"content-type": file.content_type}
