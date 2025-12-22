@@ -3,13 +3,15 @@ from fastapi.security import HTTPBearer
 from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel
+import json
 
 from supabase_client import get_supabase_client
 from auth import get_current_user, get_admin_user
 from models import (User, UserCreate, UserLogin, UserResponse, UserRole, Team,
                     TeamCreate, TeamJoin, TeamResponse, TeamMember, AssignRole,
                     TeamStatus, TeamMemberRole, Competition, CompetitionCreate,
-                    CompetitionResponse, CompetitionStatus)
+                    CompetitionResponse, CompetitionStatus, GlobalProfileUpdate,
+                    GlobalProfileResponse)
 
 # =========================================================
 # MODELS
