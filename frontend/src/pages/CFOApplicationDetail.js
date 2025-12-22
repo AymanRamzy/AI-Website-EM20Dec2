@@ -71,6 +71,28 @@ function CFOApplicationDetail() {
     }
   };
 
+  const downloadCV = async () => {
+    setDownloadingCV(true);
+    setError('');
+
+    try {
+      const response = await axios.get(
+        `${API_URL}/api/admin/competitions/${competitionId}/cfo-applications/${applicationId}/cv`
+      );
+      
+      if (response.data?.download_url) {
+        // Open signed URL in new tab for download
+        window.open(response.data.download_url, '_blank');
+      } else {
+        setError('Failed to get download URL');
+      }
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to download CV');
+    } finally {
+      setDownloadingCV(false);
+    }
+  };
+
   const getStatusBadge = (status) => {
     const styles = {
       qualified: 'bg-green-100 text-green-800 border-green-200',
