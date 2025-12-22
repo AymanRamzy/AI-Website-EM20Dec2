@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
@@ -12,10 +12,21 @@ import {
   Brain,
   TrendingUp,
   Shield,
-  Send
+  Send,
+  Upload,
+  FileText,
+  X
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || '';
+const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL || '';
+
+// Post-submission feedback messages (random selection)
+const MICRO_FEEDBACK = [
+  "Your leadership intent was clearly expressed.",
+  "Your ethics decision showed ownership.",
+  "Your judgment under uncertainty stood out."
+];
 
 // Step configurations
 const STEPS = [
@@ -67,9 +78,10 @@ const TextAreaField = ({ label, value, onChange, maxLength, minLength, placehold
 );
 
 function CFOApplication() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const navigate = useNavigate();
   const { competitionId } = useParams();
+  const fileInputRef = useRef(null);
   
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -77,6 +89,13 @@ function CFOApplication() {
   const [eligibility, setEligibility] = useState(null);
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  
+  // CV Upload state
+  const [cvFile, setCvFile] = useState(null);
+  const [cvUploading, setCvUploading] = useState(false);
+  const [cvUrl, setCvUrl] = useState('');
+  const [cvError, setCvError] = useState('');
   
   // Form data
   const [formData, setFormData] = useState({
@@ -86,6 +105,7 @@ function CFOApplication() {
     decision_ownership: '',
     leadership_willingness: '',
     commitment_level: '',
+    cfo_readiness_commitment: '', // NEW: Merged question
     // Step 2
     capital_allocation: '',
     capital_justification: '',
@@ -124,12 +144,78 @@ function CFOApplication() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  // CV Upload handler
+  const handleCVUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Validate file type
+    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!allowedTypes.includes(file.type)) {
+      setCvError('Please upload a PDF, DOC, or DOCX file');
+      return;
+    }
+    
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      setCvError('File size must be less than 5MB');
+      return;
+    }
+    
+    setCvFile(file);
+    setCvError('');
+    setCvUploading(true);
+    
+    try {
+      // Get file extension
+      const ext = file.name.split('.').pop().toLowerCase();
+      const fileName = `cfo/${competitionId}/${user.id}.${ext}`;
+      
+      // Upload to Supabase Storage
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', file);
+      
+      const uploadResponse = await axios.post(
+        `${API_URL}/api/cfo/applications/upload-cv`,
+        formDataUpload,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': `Bearer ${token}`
+          },
+          params: { competition_id: competitionId }
+        }
+      );
+      
+      if (uploadResponse.data?.cv_url) {
+        setCvUrl(uploadResponse.data.cv_url);
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (err) {
+      console.error('CV upload error:', err);
+      setCvError(err.response?.data?.detail || 'Failed to upload CV. Please try again.');
+      setCvFile(null);
+    } finally {
+      setCvUploading(false);
+    }
+  };
+
+  const removeCv = () => {
+    setCvFile(null);
+    setCvUrl('');
+    setCvError('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const isStepValid = (step) => {
     switch (step) {
       case 1:
         return formData.experience_years && formData.leadership_exposure && 
                formData.decision_ownership && formData.leadership_willingness && 
-               formData.commitment_level;
+               formData.commitment_level && formData.cfo_readiness_commitment;
       case 2:
         return formData.capital_allocation && formData.capital_justification.length >= 50 &&
                formData.cash_vs_profit.length >= 50 && formData.kpi_prioritization.length >= 50;
@@ -138,8 +224,9 @@ function CFOApplication() {
                formData.cost_priority && formData.cfo_mindset && 
                formData.mindset_explanation.length >= 30;
       case 4:
+        // CV is required for final step
         return formData.ethics_choice && formData.culture_vs_results && 
-               formData.why_top_100.length >= 100;
+               formData.why_top_100.length >= 100 && cvUrl;
       default:
         return false;
     }
@@ -164,6 +251,18 @@ function CFOApplication() {
       return;
     }
     
+    // CV required validation
+    if (!cvUrl) {
+      setError('Please upload your CV before submitting');
+      return;
+    }
+    
+    // Hard gate: not_ready check
+    if (formData.cfo_readiness_commitment === 'not_ready') {
+      setError('You have indicated you are not ready for CFO responsibilities. This application requires readiness to proceed.');
+      return;
+    }
+    
     setSubmitting(true);
     setError('');
 
@@ -175,7 +274,8 @@ function CFOApplication() {
           leadership_exposure: formData.leadership_exposure,
           decision_ownership: formData.decision_ownership,
           leadership_willingness: formData.leadership_willingness,
-          commitment_level: formData.commitment_level
+          commitment_level: formData.commitment_level,
+          cfo_readiness_commitment: formData.cfo_readiness_commitment
         },
         step2: {
           capital_allocation: formData.capital_allocation,
@@ -194,12 +294,17 @@ function CFOApplication() {
           ethics_choice: formData.ethics_choice,
           culture_vs_results: formData.culture_vs_results,
           why_top_100: formData.why_top_100.trim()
-        }
+        },
+        cv_url: cvUrl,
+        cv_uploaded_at: new Date().toISOString()
       };
 
       const response = await axios.post(`${API_URL}/api/cfo/applications/submit`, applicationData);
       
       if (response.data?.success) {
+        // Select random micro feedback
+        const randomFeedback = MICRO_FEEDBACK[Math.floor(Math.random() * MICRO_FEEDBACK.length)];
+        setFeedbackMessage(randomFeedback);
         setSubmitted(true);
       } else {
         setError(response.data?.message || 'Submission failed. Please try again.');
@@ -212,18 +317,20 @@ function CFOApplication() {
       let errorMessage = 'Failed to submit application. Please try again.';
       
       if (typeof errorDetail === 'string') {
-        // Map backend errors to user-friendly messages
         if (errorDetail.includes('already submitted')) {
           errorMessage = 'You have already submitted an application for this competition.';
         } else if (errorDetail.includes('Validation failed')) {
           errorMessage = 'Some answers are incomplete. Please review all fields.';
         } else if (errorDetail.includes('Not eligible')) {
           errorMessage = 'You are not eligible to apply. Please check eligibility requirements.';
+        } else if (errorDetail.includes('CV')) {
+          errorMessage = 'Please upload your CV before submitting.';
+        } else if (errorDetail.includes('not ready')) {
+          errorMessage = errorDetail;
         } else {
           errorMessage = errorDetail;
         }
       } else if (typeof errorDetail === 'object' && errorDetail !== null) {
-        // Handle object errors - extract message
         errorMessage = errorDetail.message || errorDetail.msg || 'An error occurred. Please try again.';
       }
       
@@ -233,518 +340,609 @@ function CFOApplication() {
     }
   };
 
-  // Loading state
+  // Success Screen with Micro Feedback
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-modex-primary via-modex-secondary to-modex-accent flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="w-12 h-12 text-green-500" />
+          </div>
+          <h2 className="text-2xl font-black text-modex-primary mb-4">Application Submitted!</h2>
+          <p className="text-gray-600 mb-4">
+            Your CFO leadership application has been received and is now under review.
+          </p>
+          {/* POST-SUBMISSION MICRO FEEDBACK */}
+          <div className="bg-modex-light border-l-4 border-modex-secondary p-4 rounded-r-lg mb-6">
+            <p className="text-modex-primary font-medium italic">&quot;{feedbackMessage}&quot;</p>
+          </div>
+          <p className="text-sm text-gray-500 mb-6">
+            We will notify you once the evaluation is complete.
+          </p>
+          <div className="space-y-3">
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="w-full bg-modex-secondary text-white py-3 rounded-lg font-bold hover:bg-modex-primary transition-colors"
+            >
+              Return to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading State
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader className="w-12 h-12 animate-spin text-modex-secondary mx-auto mb-4" />
+          <Loader className="w-12 h-12 text-modex-secondary animate-spin mx-auto mb-4" />
           <p className="text-gray-600">Checking eligibility...</p>
         </div>
       </div>
     );
   }
 
-  // Not eligible (CFO-FIRST: Simple checks only)
+  // Not Eligible
   if (eligibility && !eligibility.eligible) {
     return (
-      <div className="min-h-screen bg-gray-50 py-12">
-        <div className="max-w-2xl mx-auto px-4">
-          <div className="bg-white rounded-xl p-8 shadow-sm border-2 border-red-200">
-            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-center text-gray-800 mb-4">
-              {eligibility.existing_application ? 'Already Applied' : 'Not Eligible to Apply'}
-            </h2>
-            <div className="bg-red-50 rounded-lg p-4 mb-6">
-              <ul className="space-y-2">
-                {eligibility.reasons.map((reason, i) => (
-                  <li key={i} className="flex items-start text-red-800">
-                    <span className="mr-2">•</span>
-                    {reason}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            {eligibility.existing_application && (
-              <div className="bg-blue-50 rounded-lg p-4 mb-4">
-                <p className="text-sm text-blue-800">
-                  <strong>Application Status:</strong> {eligibility.existing_application.status}
-                </p>
-              </div>
-            )}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="font-semibold text-gray-800 mb-2">Requirements:</h3>
-              <ul className="space-y-1 text-sm text-gray-600">
-                <li className={eligibility.checks?.applications_open ? 'text-green-600' : ''}>
-                  {eligibility.checks?.applications_open ? '✓' : '○'} CFO applications are open
-                </li>
-                <li className={eligibility.checks?.not_already_applied ? 'text-green-600' : ''}>
-                  {eligibility.checks?.not_already_applied ? '✓' : '○'} Have not already applied
-                </li>
-              </ul>
-            </div>
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="mt-6 w-full bg-modex-secondary text-white py-3 rounded-lg font-bold hover:bg-modex-primary transition-colors"
-            >
-              Back to Dashboard
-            </button>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Not Eligible</h2>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <ul className="text-red-700 text-sm text-left space-y-1">
+              {eligibility.reasons?.map((reason, idx) => (
+                <li key={idx}>• {reason}</li>
+              ))}
+            </ul>
           </div>
+          <button
+            onClick={() => navigate('/competitions')}
+            className="text-modex-secondary font-semibold hover:underline"
+          >
+            ← Back to Competitions
+          </button>
         </div>
       </div>
     );
   }
 
-  // Submitted successfully
-  if (submitted) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-12">
-        <div className="max-w-2xl mx-auto px-4">
-          <div className="bg-white rounded-xl p-8 shadow-sm border-2 border-green-200">
-            <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-center text-gray-800 mb-4">
-              Application Submitted Successfully!
-            </h2>
-            <p className="text-center text-gray-600 mb-6">
-              Your CFO leadership application has been received and is under review.
-              You will be notified of the results when applications close.
-            </p>
-            <div className="bg-modex-light rounded-lg p-4 mb-6">
-              <p className="text-sm text-modex-primary text-center">
-                <strong>Note:</strong> Top 100 qualified candidates will be announced after all applications are reviewed.
-              </p>
-            </div>
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="w-full bg-modex-secondary text-white py-3 rounded-lg font-bold hover:bg-modex-primary transition-colors"
-            >
-              Back to Dashboard
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Main form
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center">
-            <button onClick={() => navigate('/dashboard')} className="mr-4 text-gray-600 hover:text-modex-secondary">
-              <ArrowLeft className="w-6 h-6" />
-            </button>
+  // Step content renderer
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <div className="space-y-6">
+            {/* Experience Years */}
             <div>
-              <h1 className="text-2xl font-bold text-modex-primary">CFO Leadership Application</h1>
-              <p className="text-sm text-gray-600">Complete all 4 sections • ~15-20 minutes</p>
+              <h3 className="font-bold text-gray-800 mb-3">Years of relevant experience in finance/business?</h3>
+              <div className="space-y-2">
+                {[
+                  { value: 'less_than_2', label: 'Less than 2 years' },
+                  { value: '2_to_5', label: '2-5 years' },
+                  { value: '5_to_10', label: '5-10 years' },
+                  { value: 'more_than_10', label: 'More than 10 years' }
+                ].map(opt => (
+                  <RadioOption
+                    key={opt.value}
+                    name="experience_years"
+                    value={opt.value}
+                    label={opt.label}
+                    selected={formData.experience_years === opt.value}
+                    onChange={(v) => handleInputChange('experience_years', v)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Leadership Exposure */}
+            <div>
+              <h3 className="font-bold text-gray-800 mb-3">What level of leadership exposure have you had?</h3>
+              <div className="space-y-2">
+                {[
+                  { value: 'individual_contributor', label: 'Individual Contributor', description: 'No direct reports' },
+                  { value: 'team_lead', label: 'Team Lead', description: 'Managing small teams' },
+                  { value: 'department_head', label: 'Department Head', description: 'Leading departments/divisions' },
+                  { value: 'c_suite', label: 'C-Suite / Executive', description: 'Executive leadership experience' }
+                ].map(opt => (
+                  <RadioOption
+                    key={opt.value}
+                    name="leadership_exposure"
+                    value={opt.value}
+                    label={opt.label}
+                    description={opt.description}
+                    selected={formData.leadership_exposure === opt.value}
+                    onChange={(v) => handleInputChange('leadership_exposure', v)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Decision Ownership */}
+            <div>
+              <h3 className="font-bold text-gray-800 mb-3">Have you owned significant financial decisions?</h3>
+              <div className="space-y-2">
+                {[
+                  { value: 'never', label: 'Never', description: 'No ownership of financial decisions' },
+                  { value: 'with_supervision', label: 'With Supervision', description: 'Decisions reviewed by others' },
+                  { value: 'independent', label: 'Independent', description: 'Made decisions independently' },
+                  { value: 'strategic', label: 'Strategic Level', description: 'Owned strategic financial decisions' }
+                ].map(opt => (
+                  <RadioOption
+                    key={opt.value}
+                    name="decision_ownership"
+                    value={opt.value}
+                    label={opt.label}
+                    description={opt.description}
+                    selected={formData.decision_ownership === opt.value}
+                    onChange={(v) => handleInputChange('decision_ownership', v)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Leadership Willingness */}
+            <div>
+              <h3 className="font-bold text-gray-800 mb-3">How willing are you to take on leadership roles?</h3>
+              <div className="space-y-2">
+                {[
+                  { value: 'not_interested', label: 'Not Interested', description: 'Prefer individual work' },
+                  { value: 'maybe_later', label: 'Maybe Later', description: 'Open to it in the future' },
+                  { value: 'ready_with_guidance', label: 'Ready with Guidance', description: 'Ready with mentorship' },
+                  { value: 'fully_ready', label: 'Fully Ready', description: 'Ready to lead now' }
+                ].map(opt => (
+                  <RadioOption
+                    key={opt.value}
+                    name="leadership_willingness"
+                    value={opt.value}
+                    label={opt.label}
+                    description={opt.description}
+                    selected={formData.leadership_willingness === opt.value}
+                    onChange={(v) => handleInputChange('leadership_willingness', v)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Commitment Level */}
+            <div>
+              <h3 className="font-bold text-gray-800 mb-3">What is your commitment level to this competition?</h3>
+              <div className="space-y-2">
+                {[
+                  { value: 'exploring', label: 'Exploring', description: 'Just checking it out' },
+                  { value: 'partially_committed', label: 'Partially Committed', description: 'Interested but uncertain' },
+                  { value: 'highly_committed', label: 'Highly Committed', description: 'Dedicated to succeeding' },
+                  { value: 'all_in', label: 'All In', description: 'Fully committed to winning' }
+                ].map(opt => (
+                  <RadioOption
+                    key={opt.value}
+                    name="commitment_level"
+                    value={opt.value}
+                    label={opt.label}
+                    description={opt.description}
+                    selected={formData.commitment_level === opt.value}
+                    onChange={(v) => handleInputChange('commitment_level', v)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* NEW: CFO Readiness & Commitment (Merged Question) */}
+            <div className="border-t-2 border-modex-secondary/20 pt-6">
+              <h3 className="font-bold text-gray-800 mb-3">
+                How ready and committed are you to take on CFO-level responsibilities?
+                <span className="text-red-500 ml-1">*</span>
+              </h3>
+              <div className="space-y-2">
+                {[
+                  { value: 'not_ready', label: 'Not Ready', description: 'I am not prepared for CFO responsibilities at this time' },
+                  { value: 'exploring', label: 'Exploring', description: 'I am exploring what CFO responsibilities entail' },
+                  { value: 'ready_with_conditions', label: 'Ready with Conditions', description: 'I am ready with the right support and resources' },
+                  { value: 'fully_ready', label: 'Fully Ready', description: 'I am fully prepared and committed to CFO-level responsibilities' }
+                ].map(opt => (
+                  <RadioOption
+                    key={opt.value}
+                    name="cfo_readiness_commitment"
+                    value={opt.value}
+                    label={opt.label}
+                    description={opt.description}
+                    selected={formData.cfo_readiness_commitment === opt.value}
+                    onChange={(v) => handleInputChange('cfo_readiness_commitment', v)}
+                  />
+                ))}
+              </div>
+              {formData.cfo_readiness_commitment === 'not_ready' && (
+                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-700 text-sm font-medium">
+                    ⚠️ Selecting &quot;Not Ready&quot; will prevent you from submitting this application.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      </header>
+        );
 
-      {/* Progress Steps */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex justify-between">
-            {STEPS.map((step) => {
-              const Icon = step.icon;
-              const isActive = step.id === currentStep;
-              const isComplete = step.id < currentStep;
+      case 2:
+        return (
+          <div className="space-y-6">
+            {/* Capital Allocation */}
+            <div>
+              <h3 className="font-bold text-gray-800 mb-3">
+                You have $10M to allocate. Which option do you choose?
+              </h3>
+              <div className="space-y-2">
+                {[
+                  { value: 'growth', label: 'Growth Investment', description: 'Invest in expansion and new markets' },
+                  { value: 'debt_reduction', label: 'Debt Reduction', description: 'Pay down existing debt' },
+                  { value: 'dividends', label: 'Shareholder Dividends', description: 'Return value to shareholders' },
+                  { value: 'reserves', label: 'Cash Reserves', description: 'Build financial buffer' }
+                ].map(opt => (
+                  <RadioOption
+                    key={opt.value}
+                    name="capital_allocation"
+                    value={opt.value}
+                    label={opt.label}
+                    description={opt.description}
+                    selected={formData.capital_allocation === opt.value}
+                    onChange={(v) => handleInputChange('capital_allocation', v)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Capital Justification */}
+            <TextAreaField
+              label="Justify your capital allocation decision (minimum 50 characters)"
+              value={formData.capital_justification}
+              onChange={(v) => handleInputChange('capital_justification', v)}
+              maxLength={500}
+              minLength={50}
+              placeholder="Explain your reasoning..."
+              rows={4}
+            />
+
+            {/* Cash vs Profit */}
+            <TextAreaField
+              label="A company is profitable but running low on cash. What do you prioritize and why? (minimum 50 characters)"
+              value={formData.cash_vs_profit}
+              onChange={(v) => handleInputChange('cash_vs_profit', v)}
+              maxLength={500}
+              minLength={50}
+              placeholder="Explain your approach..."
+              rows={4}
+            />
+
+            {/* KPI Prioritization */}
+            <TextAreaField
+              label="What 3 financial KPIs would you prioritize as CFO and why? (minimum 50 characters)"
+              value={formData.kpi_prioritization}
+              onChange={(v) => handleInputChange('kpi_prioritization', v)}
+              maxLength={500}
+              minLength={50}
+              placeholder="List and explain your top 3 KPIs..."
+              rows={4}
+            />
+          </div>
+        );
+
+      case 3:
+        return (
+          <div className="space-y-6">
+            {/* DSCR Choice */}
+            <div>
+              <h3 className="font-bold text-gray-800 mb-3">
+                Your company&apos;s DSCR drops below 1.0. What is your first action?
+              </h3>
+              <div className="space-y-2">
+                {[
+                  { value: 'cut_costs', label: 'Cut Costs Immediately', description: 'Reduce operating expenses' },
+                  { value: 'negotiate_terms', label: 'Negotiate with Lenders', description: 'Restructure debt terms' },
+                  { value: 'raise_capital', label: 'Raise Emergency Capital', description: 'Seek additional funding' },
+                  { value: 'asset_sale', label: 'Sell Non-Core Assets', description: 'Liquidate to improve position' }
+                ].map(opt => (
+                  <RadioOption
+                    key={opt.value}
+                    name="dscr_choice"
+                    value={opt.value}
+                    label={opt.label}
+                    description={opt.description}
+                    selected={formData.dscr_choice === opt.value}
+                    onChange={(v) => handleInputChange('dscr_choice', v)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* DSCR Impact */}
+            <TextAreaField
+              label="How would this decision impact stakeholders? (minimum 30 characters)"
+              value={formData.dscr_impact}
+              onChange={(v) => handleInputChange('dscr_impact', v)}
+              maxLength={300}
+              minLength={30}
+              placeholder="Describe the stakeholder impact..."
+            />
+
+            {/* Cost Priority */}
+            <div>
+              <h3 className="font-bold text-gray-800 mb-3">
+                When cutting costs, which area do you protect most?
+              </h3>
+              <div className="space-y-2">
+                {[
+                  { value: 'people', label: 'People & Talent', description: 'Protect human capital' },
+                  { value: 'rd', label: 'R&D / Innovation', description: 'Maintain future growth' },
+                  { value: 'marketing', label: 'Marketing & Sales', description: 'Protect revenue drivers' },
+                  { value: 'operations', label: 'Core Operations', description: 'Maintain service delivery' }
+                ].map(opt => (
+                  <RadioOption
+                    key={opt.value}
+                    name="cost_priority"
+                    value={opt.value}
+                    label={opt.label}
+                    description={opt.description}
+                    selected={formData.cost_priority === opt.value}
+                    onChange={(v) => handleInputChange('cost_priority', v)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* CFO Mindset */}
+            <div>
+              <h3 className="font-bold text-gray-800 mb-3">
+                What defines a CFO&apos;s mindset most?
+              </h3>
+              <div className="space-y-2">
+                {[
+                  { value: 'risk_management', label: 'Risk Management', description: 'Protecting the company' },
+                  { value: 'growth_enablement', label: 'Growth Enablement', description: 'Driving expansion' },
+                  { value: 'stakeholder_balance', label: 'Stakeholder Balance', description: 'Balancing all interests' },
+                  { value: 'financial_discipline', label: 'Financial Discipline', description: 'Maintaining controls' }
+                ].map(opt => (
+                  <RadioOption
+                    key={opt.value}
+                    name="cfo_mindset"
+                    value={opt.value}
+                    label={opt.label}
+                    description={opt.description}
+                    selected={formData.cfo_mindset === opt.value}
+                    onChange={(v) => handleInputChange('cfo_mindset', v)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Mindset Explanation */}
+            <TextAreaField
+              label="Why did you choose this mindset? (minimum 30 characters)"
+              value={formData.mindset_explanation}
+              onChange={(v) => handleInputChange('mindset_explanation', v)}
+              maxLength={300}
+              minLength={30}
+              placeholder="Explain your choice..."
+            />
+          </div>
+        );
+
+      case 4:
+        return (
+          <div className="space-y-6">
+            {/* Ethics Choice */}
+            <div>
+              <h3 className="font-bold text-gray-800 mb-3">
+                You discover a financial irregularity that benefits the company. What do you do?
+              </h3>
+              <div className="space-y-2">
+                {[
+                  { value: 'report_immediately', label: 'Report Immediately', description: 'Full disclosure regardless of impact' },
+                  { value: 'investigate_first', label: 'Investigate First', description: 'Gather facts before acting' },
+                  { value: 'consult_legal', label: 'Consult Legal', description: 'Seek legal guidance first' },
+                  { value: 'assess_materiality', label: 'Assess Materiality', description: 'Determine if significant enough to report' }
+                ].map(opt => (
+                  <RadioOption
+                    key={opt.value}
+                    name="ethics_choice"
+                    value={opt.value}
+                    label={opt.label}
+                    description={opt.description}
+                    selected={formData.ethics_choice === opt.value}
+                    onChange={(v) => handleInputChange('ethics_choice', v)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Culture vs Results */}
+            <div>
+              <h3 className="font-bold text-gray-800 mb-3">
+                A high performer is toxic to team culture. What&apos;s your call?
+              </h3>
+              <div className="space-y-2">
+                {[
+                  { value: 'keep_performer', label: 'Keep the Performer', description: 'Results matter most' },
+                  { value: 'coach_improve', label: 'Coach to Improve', description: 'Invest in behavior change' },
+                  { value: 'isolate_role', label: 'Isolate Their Role', description: 'Minimize team interaction' },
+                  { value: 'let_go', label: 'Let Them Go', description: 'Culture over short-term results' }
+                ].map(opt => (
+                  <RadioOption
+                    key={opt.value}
+                    name="culture_vs_results"
+                    value={opt.value}
+                    label={opt.label}
+                    description={opt.description}
+                    selected={formData.culture_vs_results === opt.value}
+                    onChange={(v) => handleInputChange('culture_vs_results', v)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Why Top 100 */}
+            <TextAreaField
+              label="Why should you be in the Top 100 CFO candidates? (minimum 100 characters)"
+              value={formData.why_top_100}
+              onChange={(v) => handleInputChange('why_top_100', v)}
+              maxLength={600}
+              minLength={100}
+              placeholder="Make your case..."
+              rows={5}
+            />
+
+            {/* CV Upload Section */}
+            <div className="border-t-2 border-modex-secondary/20 pt-6">
+              <h3 className="font-bold text-gray-800 mb-3">
+                Upload Your CV <span className="text-red-500">*</span>
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Please upload your CV in PDF, DOC, or DOCX format (max 5MB).
+              </p>
+              
+              {!cvUrl ? (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-modex-secondary transition-colors">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={handleCVUpload}
+                    className="hidden"
+                    id="cv-upload"
+                  />
+                  <label htmlFor="cv-upload" className="cursor-pointer">
+                    {cvUploading ? (
+                      <div className="flex flex-col items-center">
+                        <Loader className="w-10 h-10 text-modex-secondary animate-spin mb-2" />
+                        <span className="text-gray-600">Uploading...</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center">
+                        <Upload className="w-10 h-10 text-gray-400 mb-2" />
+                        <span className="text-modex-secondary font-semibold">Click to upload CV</span>
+                        <span className="text-sm text-gray-500 mt-1">PDF, DOC, DOCX (max 5MB)</span>
+                      </div>
+                    )}
+                  </label>
+                </div>
+              ) : (
+                <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 flex items-center justify-between">
+                  <div className="flex items-center">
+                    <FileText className="w-8 h-8 text-green-600 mr-3" />
+                    <div>
+                      <p className="font-semibold text-green-800">{cvFile?.name || 'CV Uploaded'}</p>
+                      <p className="text-sm text-green-600">Successfully uploaded</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removeCv}
+                    className="p-2 hover:bg-red-100 rounded-full transition-colors"
+                  >
+                    <X className="w-5 h-5 text-red-500" />
+                  </button>
+                </div>
+              )}
+              
+              {cvError && (
+                <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                  <AlertCircle className="w-4 h-4" /> {cvError}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-3xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <button
+            onClick={() => navigate(`/competitions/${competitionId}`)}
+            className="text-modex-secondary hover:text-modex-primary font-semibold flex items-center mb-4"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Competition
+          </button>
+          <h1 className="text-3xl font-black text-modex-primary">CFO Leadership Application</h1>
+          
+          {/* APPLICANT FRAMING - UI ONLY */}
+          <div className="mt-4 bg-modex-light border-l-4 border-modex-accent p-4 rounded-r-lg">
+            <p className="text-modex-primary font-medium italic">
+              &quot;This is not a test. There are no correct answers — only defensible decisions.&quot;
+            </p>
+          </div>
+        </div>
+
+        {/* Progress Steps */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            {STEPS.map((step, index) => {
+              const StepIcon = step.icon;
+              const isCompleted = currentStep > step.id;
+              const isCurrent = currentStep === step.id;
               
               return (
-                <div key={step.id} className={`flex-1 text-center ${step.id < 4 ? 'border-r border-gray-200' : ''}`}>
-                  <div className={`inline-flex items-center justify-center w-10 h-10 rounded-full mb-2 ${
-                    isActive ? 'bg-modex-secondary text-white' :
-                    isComplete ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'
-                  }`}>
-                    {isComplete ? <CheckCircle className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
+                <div key={step.id} className="flex items-center">
+                  <div className={`flex flex-col items-center ${index < STEPS.length - 1 ? 'w-full' : ''}`}>
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                      isCompleted ? 'bg-green-500' : isCurrent ? 'bg-modex-secondary' : 'bg-gray-200'
+                    }`}>
+                      {isCompleted ? (
+                        <CheckCircle className="w-6 h-6 text-white" />
+                      ) : (
+                        <StepIcon className={`w-6 h-6 ${isCurrent ? 'text-white' : 'text-gray-500'}`} />
+                      )}
+                    </div>
+                    <span className={`text-xs mt-2 text-center ${isCurrent ? 'text-modex-secondary font-semibold' : 'text-gray-500'}`}>
+                      {step.title}
+                    </span>
                   </div>
-                  <p className={`text-xs font-semibold ${isActive ? 'text-modex-secondary' : 'text-gray-500'}`}>
-                    {step.title}
-                  </p>
+                  {index < STEPS.length - 1 && (
+                    <div className={`h-1 w-full mx-2 ${isCompleted ? 'bg-green-500' : 'bg-gray-200'}`} />
+                  )}
                 </div>
               );
             })}
           </div>
         </div>
-      </div>
 
-      {/* Form Content */}
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-            {error}
+        {/* Form Card */}
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-modex-primary">{STEPS[currentStep - 1].title}</h2>
+            <p className="text-gray-600">{STEPS[currentStep - 1].description}</p>
           </div>
-        )}
 
-        <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-200">
-          {/* Step 1: Leadership Profile */}
-          {currentStep === 1 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-bold text-modex-primary mb-1">Leadership Profile</h2>
-                <p className="text-gray-600">Tell us about your experience and readiness to lead.</p>
-              </div>
-
-              <div className="space-y-4">
-                <label className="block font-semibold text-gray-800 mb-2">Years of Professional Experience</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { value: 'less_than_2', label: 'Less than 2 years' },
-                    { value: '2_to_5', label: '2-5 years' },
-                    { value: '5_to_10', label: '5-10 years' },
-                    { value: 'more_than_10', label: '10+ years' }
-                  ].map(opt => (
-                    <RadioOption
-                      key={opt.value}
-                      name="experience_years"
-                      value={opt.value}
-                      label={opt.label}
-                      selected={formData.experience_years === opt.value}
-                      onChange={(v) => handleInputChange('experience_years', v)}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <label className="block font-semibold text-gray-800 mb-2">Leadership Exposure</label>
-                <div className="space-y-3">
-                  {[
-                    { value: 'none', label: 'No formal leadership role yet', description: 'Individual contributor' },
-                    { value: 'team_lead', label: 'Team Lead', description: 'Led small teams or projects' },
-                    { value: 'department_head', label: 'Department Head', description: 'Managed department or division' },
-                    { value: 'c_suite', label: 'C-Suite / Executive', description: 'Senior executive experience' }
-                  ].map(opt => (
-                    <RadioOption
-                      key={opt.value}
-                      name="leadership_exposure"
-                      value={opt.value}
-                      label={opt.label}
-                      description={opt.description}
-                      selected={formData.leadership_exposure === opt.value}
-                      onChange={(v) => handleInputChange('leadership_exposure', v)}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <label className="block font-semibold text-gray-800 mb-2">How do you typically handle critical decisions?</label>
-                <div className="space-y-3">
-                  {[
-                    { value: 'avoid', label: 'I prefer to avoid making critical decisions' },
-                    { value: 'delegate', label: 'I delegate to others who are more qualified' },
-                    { value: 'own_with_support', label: 'I own decisions but seek input from others' },
-                    { value: 'full_ownership', label: 'I take full ownership and accountability' }
-                  ].map(opt => (
-                    <RadioOption
-                      key={opt.value}
-                      name="decision_ownership"
-                      value={opt.value}
-                      label={opt.label}
-                      selected={formData.decision_ownership === opt.value}
-                      onChange={(v) => handleInputChange('decision_ownership', v)}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <label className="block font-semibold text-gray-800 mb-2">How ready are you to take on CFO-level responsibilities?</label>
-                <div className="space-y-3">
-                  {[
-                    { value: 'not_interested', label: 'Not interested at this time' },
-                    { value: 'maybe_later', label: 'Maybe in the future' },
-                    { value: 'ready_with_guidance', label: 'Ready with mentorship and guidance' },
-                    { value: 'fully_ready', label: 'Fully ready to lead now' }
-                  ].map(opt => (
-                    <RadioOption
-                      key={opt.value}
-                      name="leadership_willingness"
-                      value={opt.value}
-                      label={opt.label}
-                      selected={formData.leadership_willingness === opt.value}
-                      onChange={(v) => handleInputChange('leadership_willingness', v)}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <label className="block font-semibold text-gray-800 mb-2">What is your commitment level to this competition?</label>
-                <div className="space-y-3">
-                  {[
-                    { value: 'exploring', label: 'Just exploring' },
-                    { value: 'partially_committed', label: 'Partially committed' },
-                    { value: 'highly_committed', label: 'Highly committed' },
-                    { value: 'all_in', label: 'All in - this is my priority' }
-                  ].map(opt => (
-                    <RadioOption
-                      key={opt.value}
-                      name="commitment_level"
-                      value={opt.value}
-                      label={opt.label}
-                      selected={formData.commitment_level === opt.value}
-                      onChange={(v) => handleInputChange('commitment_level', v)}
-                    />
-                  ))}
-                </div>
-              </div>
+          {/* Error Display */}
+          {error && (
+            <div className="mb-6 bg-red-50 border-2 border-red-200 rounded-lg p-4 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+              <span className="text-red-700">{error}</span>
             </div>
           )}
 
-          {/* Step 2: Judgment & Capital Allocation */}
-          {currentStep === 2 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-bold text-modex-primary mb-1">Judgment & Capital Allocation</h2>
-                <p className="text-gray-600">Demonstrate your business judgment and capital allocation thinking.</p>
-              </div>
-
-              <div className="space-y-4">
-                <label className="block font-semibold text-gray-800 mb-2">
-                  Your company has $10M in excess cash. How would you allocate it?
-                </label>
-                <div className="space-y-3">
-                  {[
-                    { value: 'safe_investment', label: 'Safe investments (bonds, treasury)', description: 'Preserve capital, minimal risk' },
-                    { value: 'moderate_risk', label: 'Balanced portfolio', description: 'Mix of growth and safety' },
-                    { value: 'growth_investment', label: 'Growth investments', description: 'R&D, new markets, strategic initiatives' },
-                    { value: 'aggressive_expansion', label: 'Aggressive expansion', description: 'Acquisitions, major market moves' }
-                  ].map(opt => (
-                    <RadioOption
-                      key={opt.value}
-                      name="capital_allocation"
-                      value={opt.value}
-                      label={opt.label}
-                      description={opt.description}
-                      selected={formData.capital_allocation === opt.value}
-                      onChange={(v) => handleInputChange('capital_allocation', v)}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <TextAreaField
-                label="Justify your capital allocation choice (max 3 lines)"
-                value={formData.capital_justification}
-                onChange={(v) => handleInputChange('capital_justification', v)}
-                maxLength={300}
-                minLength={50}
-                placeholder="Explain your reasoning for this allocation strategy..."
-              />
-
-              <TextAreaField
-                label="A startup is profitable on paper but has negative cash flow. What's happening and what would you do?"
-                value={formData.cash_vs_profit}
-                onChange={(v) => handleInputChange('cash_vs_profit', v)}
-                maxLength={500}
-                minLength={50}
-                placeholder="Explain the cash vs profit dynamics and your approach..."
-                rows={4}
-              />
-
-              <TextAreaField
-                label="Revenue dropped 20% this quarter. Which KPIs would you prioritize and why?"
-                value={formData.kpi_prioritization}
-                onChange={(v) => handleInputChange('kpi_prioritization', v)}
-                maxLength={500}
-                minLength={50}
-                placeholder="Describe your KPI prioritization strategy..."
-                rows={4}
-              />
-            </div>
-          )}
-
-          {/* Step 3: Financial Reality Under Pressure */}
-          {currentStep === 3 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-bold text-modex-primary mb-1">Financial Reality Under Pressure</h2>
-                <p className="text-gray-600">How do you make decisions when facing real financial constraints?</p>
-              </div>
-
-              <div className="space-y-4">
-                <label className="block font-semibold text-gray-800 mb-2">
-                  Your DSCR is below covenant. Lenders are watching. What do you do?
-                </label>
-                <div className="space-y-3">
-                  {[
-                    { value: 'prioritize_debt', label: 'Prioritize debt payments', description: 'Cut all non-essential spending' },
-                    { value: 'balance_both', label: 'Balance debt and operations', description: 'Careful trade-offs' },
-                    { value: 'prioritize_growth', label: 'Prioritize growth', description: 'Debt can wait, growth cannot' },
-                    { value: 'renegotiate', label: 'Renegotiate with lenders', description: 'Proactive communication and restructuring' }
-                  ].map(opt => (
-                    <RadioOption
-                      key={opt.value}
-                      name="dscr_choice"
-                      value={opt.value}
-                      label={opt.label}
-                      description={opt.description}
-                      selected={formData.dscr_choice === opt.value}
-                      onChange={(v) => handleInputChange('dscr_choice', v)}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <TextAreaField
-                label="What is the short-term impact of your choice?"
-                value={formData.dscr_impact}
-                onChange={(v) => handleInputChange('dscr_impact', v)}
-                maxLength={200}
-                minLength={30}
-                placeholder="Describe the immediate effects..."
-                rows={2}
-              />
-
-              <div className="space-y-4">
-                <label className="block font-semibold text-gray-800 mb-2">
-                  You must cut costs by 15% immediately. What&apos;s your first priority?
-                </label>
-                <div className="space-y-3">
-                  {[
-                    { value: 'cut_people', label: 'Reduce headcount', description: 'Layoffs and hiring freeze' },
-                    { value: 'cut_marketing', label: 'Cut marketing spend', description: 'Reduce advertising and promotion' },
-                    { value: 'optimize_operations', label: 'Optimize operations', description: 'Process improvements, automation' },
-                    { value: 'renegotiate_vendors', label: 'Renegotiate vendor contracts', description: 'Better terms with suppliers' }
-                  ].map(opt => (
-                    <RadioOption
-                      key={opt.value}
-                      name="cost_priority"
-                      value={opt.value}
-                      label={opt.label}
-                      description={opt.description}
-                      selected={formData.cost_priority === opt.value}
-                      onChange={(v) => handleInputChange('cost_priority', v)}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <label className="block font-semibold text-gray-800 mb-2">
-                  How do you see the modern CFO role?
-                </label>
-                <div className="space-y-3">
-                  {[
-                    { value: 'number_cruncher', label: 'Number Cruncher', description: 'Focus on accuracy and compliance' },
-                    { value: 'business_partner', label: 'Business Partner', description: 'Support other functions with data' },
-                    { value: 'strategic_advisor', label: 'Strategic Advisor', description: 'Guide company strategy with financial insight' },
-                    { value: 'chief_value_officer', label: 'Chief Value Officer', description: 'Drive value creation across the organization' }
-                  ].map(opt => (
-                    <RadioOption
-                      key={opt.value}
-                      name="cfo_mindset"
-                      value={opt.value}
-                      label={opt.label}
-                      description={opt.description}
-                      selected={formData.cfo_mindset === opt.value}
-                      onChange={(v) => handleInputChange('cfo_mindset', v)}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <TextAreaField
-                label="Explain your view of the CFO role in one line"
-                value={formData.mindset_explanation}
-                onChange={(v) => handleInputChange('mindset_explanation', v)}
-                maxLength={150}
-                minLength={30}
-                placeholder="What makes a great CFO..."
-                rows={2}
-              />
-            </div>
-          )}
-
-          {/* Step 4: Ethics & Final Ownership */}
-          {currentStep === 4 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-bold text-modex-primary mb-1">Ethics & Final Ownership</h2>
-                <p className="text-gray-600">Your values and commitment to leadership integrity.</p>
-              </div>
-
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                <p className="text-sm text-yellow-800">
-                  <strong>Important:</strong> This section evaluates your ethical judgment. 
-                  There are no trick questions - we&apos;re looking for leaders who do the right thing.
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <label className="block font-semibold text-gray-800 mb-2">
-                  You discover a financial irregularity that could impact the company&apos;s reported earnings. What do you do?
-                </label>
-                <div className="space-y-3">
-                  {[
-                    { value: 'report_immediately', label: 'Report immediately to the board and audit committee' },
-                    { value: 'investigate_first', label: 'Investigate first, then report with findings' },
-                    { value: 'consult_legal', label: 'Consult legal counsel before any action' },
-                    { value: 'adjust_quietly', label: 'Adjust quietly if the impact is small' },
-                    { value: 'do_nothing', label: 'Do nothing - not my direct responsibility' }
-                  ].map(opt => (
-                    <RadioOption
-                      key={opt.value}
-                      name="ethics_choice"
-                      value={opt.value}
-                      label={opt.label}
-                      selected={formData.ethics_choice === opt.value}
-                      onChange={(v) => handleInputChange('ethics_choice', v)}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <label className="block font-semibold text-gray-800 mb-2">
-                  A high performer on your team consistently delivers results but creates a toxic environment. What do you prioritize?
-                </label>
-                <div className="space-y-3">
-                  {[
-                    { value: 'results_first', label: 'Results first - the numbers speak for themselves' },
-                    { value: 'culture_first', label: 'Culture first - toxic behavior cannot be tolerated' },
-                    { value: 'balance_both', label: 'Balance both - coach the behavior while retaining talent' },
-                    { value: 'depends_on_situation', label: 'It depends on the specific situation' }
-                  ].map(opt => (
-                    <RadioOption
-                      key={opt.value}
-                      name="culture_vs_results"
-                      value={opt.value}
-                      label={opt.label}
-                      selected={formData.culture_vs_results === opt.value}
-                      onChange={(v) => handleInputChange('culture_vs_results', v)}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-gray-200">
-                <TextAreaField
-                  label="Why do you deserve to be among the Top 100 future CFO leaders? (Max 3 lines)"
-                  value={formData.why_top_100}
-                  onChange={(v) => handleInputChange('why_top_100', v)}
-                  maxLength={300}
-                  minLength={100}
-                  placeholder="Tell us what makes you stand out as a future CFO leader..."
-                  rows={4}
-                />
-              </div>
-            </div>
-          )}
+          {/* Step Content */}
+          {renderStepContent()}
 
           {/* Navigation */}
-          <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
+          <div className="flex justify-between mt-8 pt-6 border-t">
             <button
               onClick={handleBack}
               disabled={currentStep === 1}
-              className="flex items-center px-6 py-3 text-gray-600 font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:text-modex-secondary transition-colors"
+              className={`flex items-center px-6 py-3 rounded-lg font-semibold transition-colors ${
+                currentStep === 1
+                  ? 'text-gray-400 cursor-not-allowed'
+                  : 'text-modex-secondary hover:bg-modex-light'
+              }`}
             >
-              <ArrowLeft className="w-5 h-5 mr-2" />
+              <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </button>
 
@@ -752,16 +950,24 @@ function CFOApplication() {
               <button
                 onClick={handleNext}
                 disabled={!isStepValid(currentStep)}
-                className="flex items-center px-6 py-3 bg-modex-secondary text-white font-bold rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-modex-primary transition-colors"
+                className={`flex items-center px-6 py-3 rounded-lg font-semibold transition-colors ${
+                  isStepValid(currentStep)
+                    ? 'bg-modex-secondary text-white hover:bg-modex-primary'
+                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                }`}
               >
                 Next
-                <ArrowRight className="w-5 h-5 ml-2" />
+                <ArrowRight className="w-4 h-4 ml-2" />
               </button>
             ) : (
               <button
                 onClick={handleSubmit}
                 disabled={!isStepValid(4) || submitting}
-                className="flex items-center px-8 py-3 bg-green-600 text-white font-bold rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-green-700 transition-colors"
+                className={`flex items-center px-8 py-3 rounded-lg font-bold transition-all ${
+                  isStepValid(4) && !submitting
+                    ? 'bg-modex-accent text-white hover:bg-modex-primary transform hover:scale-105'
+                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                }`}
               >
                 {submitting ? (
                   <>
