@@ -740,7 +740,8 @@ function CFOApplication() {
                   { value: 'report_immediately', label: 'Report Immediately', description: 'Full disclosure regardless of impact' },
                   { value: 'investigate_first', label: 'Investigate First', description: 'Gather facts before acting' },
                   { value: 'consult_legal', label: 'Consult Legal', description: 'Seek legal guidance first' },
-                  { value: 'assess_materiality', label: 'Assess Materiality', description: 'Determine if significant enough to report' }
+                  { value: 'adjust_quietly', label: 'Adjust Quietly', description: 'Fix internally without disclosure' },
+                  { value: 'do_nothing', label: 'Do Nothing', description: 'Leave it as is if beneficial' }
                 ].map(opt => (
                   <RadioOption
                     key={opt.value}
