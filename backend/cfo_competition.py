@@ -304,18 +304,18 @@ async def update_profile(
         errors["company_name"] = "Company name must be at least 2 characters"
     
     # LinkedIn URL validation: must start with linkedin.com
-    linkedin_pattern = r'^https://(www\.)?linkedin\.com/(in|pub|company)/[a-zA-Z0-9_-]+'
     if not profile_data.linkedin_url:
         errors["linkedin_url"] = "LinkedIn profile URL is required"
-    elif not re.match(linkedin_pattern, profile_data.linkedin_url, re.IGNORECASE):
-        errors["linkedin_url"] = "LinkedIn URL must be a valid LinkedIn profile URL"
+    elif not profile_data.linkedin_url.startswith('https://www.linkedin.com/') and not profile_data.linkedin_url.startswith('https://linkedin.com/'):
+        errors["linkedin_url"] = "LinkedIn URL must start with https://www.linkedin.com/"
     
-    # Certifications validation: check "Other" has text if selected
-    for cert in profile_data.certifications:
-        if cert.name == "Other" and (not cert.other_text or len(cert.other_text.strip()) == 0):
-            errors["other_certification"] = "Please specify your other certification"
-        if cert.other_text and len(cert.other_text) > 100:
-            errors["other_certification"] = "Other certification must be under 100 characters"
+    # Certifications validation: check "Other" has text if selected (certifications are optional)
+    if profile_data.certifications:
+        for cert in profile_data.certifications:
+            if cert.name == "Other" and (not cert.other_text or len(cert.other_text.strip()) == 0):
+                errors["other_certification"] = "Please specify your other certification"
+            if cert.other_text and len(cert.other_text) > 100:
+                errors["other_certification"] = "Other certification must be under 100 characters"
     
     # If validation errors, return structured error response
     if errors:
