@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { UserPlus, Mail, Lock, User, AlertCircle } from 'lucide-react';
@@ -12,8 +12,19 @@ function Register() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { register } = useAuth();
+  const { register, user } = useAuth();
   const navigate = useNavigate();
+
+  // If already logged in, redirect appropriately
+  useEffect(() => {
+    if (user) {
+      if (user.profile_completed) {
+        navigate('/dashboard');
+      } else {
+        navigate('/complete-profile');
+      }
+    }
+  }, [user, navigate]);
 
   const handleChange = (e) => {
     setFormData({
@@ -46,7 +57,7 @@ function Register() {
     );
 
     if (result.success) {
-      // Redirect to check-email page (NOT login, NOT dashboard)
+      // Redirect to check-email page
       navigate('/check-email');
     } else {
       setError(result.error);
@@ -58,12 +69,11 @@ function Register() {
     <div className="min-h-screen bg-gradient-to-br from-modex-primary via-modex-secondary to-modex-accent flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full">
         <div className="bg-white rounded-2xl shadow-2xl p-8">
-          {/* Logo */}
+          {/* Logo - Platform Level */}
           <div className="text-center mb-8">
             <h1 className="text-4xl font-black text-modex-primary mb-2">
               Mod<span className="text-modex-secondary">EX</span>
             </h1>
-            <h2 className="text-2xl font-bold text-modex-primary mb-2">CFO Competition</h2>
             <p className="text-gray-600">Create your account</p>
           </div>
 
@@ -92,6 +102,7 @@ function Register() {
                   onChange={handleChange}
                   className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-modex-secondary focus:outline-none transition-colors"
                   placeholder="John Doe"
+                  data-testid="fullname-input"
                 />
               </div>
             </div>
@@ -111,6 +122,7 @@ function Register() {
                   onChange={handleChange}
                   className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-modex-secondary focus:outline-none transition-colors"
                   placeholder="your@email.com"
+                  data-testid="email-input"
                 />
               </div>
             </div>
@@ -130,6 +142,7 @@ function Register() {
                   onChange={handleChange}
                   className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-modex-secondary focus:outline-none transition-colors"
                   placeholder="••••••••"
+                  data-testid="password-input"
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
@@ -150,6 +163,7 @@ function Register() {
                   onChange={handleChange}
                   className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-modex-secondary focus:outline-none transition-colors"
                   placeholder="••••••••"
+                  data-testid="confirm-password-input"
                 />
               </div>
             </div>
@@ -158,6 +172,7 @@ function Register() {
               type="submit"
               disabled={loading}
               className="w-full bg-modex-accent text-white py-3 rounded-lg font-bold hover:bg-modex-primary transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center mt-6"
+              data-testid="signup-btn"
             >
               {loading ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
@@ -174,7 +189,7 @@ function Register() {
           <div className="mt-6 text-center">
             <p className="text-gray-600">
               Already have an account?{' '}
-              <Link to="/login" className="text-modex-secondary font-bold hover:text-modex-primary transition-colors">
+              <Link to="/signin" className="text-modex-secondary font-bold hover:text-modex-primary transition-colors">
                 Sign in here
               </Link>
             </p>
