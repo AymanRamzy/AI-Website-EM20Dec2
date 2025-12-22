@@ -36,6 +36,13 @@ class LeadershipWillingness(str, Enum):
     READY_WITH_GUIDANCE = "ready_with_guidance"
     FULLY_READY = "fully_ready"
 
+# NEW: Merged CFO Readiness & Commitment Question
+class CFOReadinessCommitment(str, Enum):
+    NOT_READY = "not_ready"  # HARD GATE - Reject submission
+    EXPLORING = "exploring"
+    READY_WITH_CONDITIONS = "ready_with_conditions"
+    FULLY_READY = "fully_ready"
+
 class CommitmentLevel(str, Enum):
     EXPLORING = "exploring"
     PARTIALLY_COMMITTED = "partially_committed"
