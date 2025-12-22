@@ -473,8 +473,17 @@ async def submit_cfo_application(
 ):
     """Submit full CFO leadership application (CFO-FIRST: No team required)"""
     import logging
+    import re
     logger = logging.getLogger(__name__)
     supabase = get_supabase_client()
+    
+    # UUID validation guard - prevent unresolved placeholders
+    UUID_PATTERN = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
+    if not application.competition_id or not UUID_PATTERN.match(application.competition_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid competition ID format"
+        )
     
     # Validate all required fields before processing
     validation_errors = []
