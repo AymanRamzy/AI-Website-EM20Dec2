@@ -589,6 +589,8 @@ async def submit_cfo_application(
         "decision_ownership": application.step1.decision_ownership.value,
         "leadership_willingness": application.step1.leadership_willingness.value,
         "commitment_level": application.step1.commitment_level.value,
+        # NEW: Merged readiness & commitment question
+        "cfo_readiness_commitment": application.step1.cfo_readiness_commitment.value if application.step1.cfo_readiness_commitment else None,
         # Step 2
         "capital_allocation": application.step2.capital_allocation.value,
         "capital_justification": application.step2.capital_justification.strip(),
@@ -604,6 +606,9 @@ async def submit_cfo_application(
         "ethics_choice": application.step4.ethics_choice.value,
         "culture_vs_results": application.step4.culture_vs_results.value,
         "why_top_100": application.step4.why_top_100.strip(),
+        # CV Upload
+        "cv_url": application.cv_url,
+        "cv_uploaded_at": application.cv_uploaded_at or datetime.utcnow().isoformat(),
         # Scoring (internal only)
         "total_score": score_result["final_score"],
         "raw_score": score_result["total_raw_score"],
