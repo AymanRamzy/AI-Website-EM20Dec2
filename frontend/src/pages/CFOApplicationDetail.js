@@ -28,6 +28,7 @@ function CFOApplicationDetail() {
   const [application, setApplication] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [downloadingCV, setDownloadingCV] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
