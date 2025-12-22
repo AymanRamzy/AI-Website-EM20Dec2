@@ -509,6 +509,23 @@ async def submit_cfo_application(
     if not application.step1.commitment_level:
         validation_errors.append("Commitment level is required")
     
+    # NEW: CFO Readiness & Commitment validation (merged question)
+    if not application.step1.cfo_readiness_commitment:
+        validation_errors.append("CFO readiness and commitment level is required")
+    elif application.step1.cfo_readiness_commitment.value == "not_ready":
+        # Hard gate: reject if not_ready
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="You have indicated you are not ready for CFO responsibilities. This application requires readiness to proceed."
+        )
+    
+    # CV URL validation (required)
+    if not application.cv_url:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Please upload your CV before submitting"
+        )
+    
     # Step 2 validation
     if not application.step2.capital_allocation:
         validation_errors.append("Capital allocation choice is required")
