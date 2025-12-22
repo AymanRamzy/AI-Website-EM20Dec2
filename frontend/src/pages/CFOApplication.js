@@ -158,6 +158,12 @@ function CFOApplication() {
   };
 
   const handleSubmit = async () => {
+    // Final validation before submit
+    if (!isStepValid(1) || !isStepValid(2) || !isStepValid(3) || !isStepValid(4)) {
+      setError('Please complete all required fields before submitting');
+      return;
+    }
+    
     setSubmitting(true);
     setError('');
 
@@ -173,28 +179,55 @@ function CFOApplication() {
         },
         step2: {
           capital_allocation: formData.capital_allocation,
-          capital_justification: formData.capital_justification,
-          cash_vs_profit: formData.cash_vs_profit,
-          kpi_prioritization: formData.kpi_prioritization
+          capital_justification: formData.capital_justification.trim(),
+          cash_vs_profit: formData.cash_vs_profit.trim(),
+          kpi_prioritization: formData.kpi_prioritization.trim()
         },
         step3: {
           dscr_choice: formData.dscr_choice,
-          dscr_impact: formData.dscr_impact,
+          dscr_impact: formData.dscr_impact.trim(),
           cost_priority: formData.cost_priority,
           cfo_mindset: formData.cfo_mindset,
-          mindset_explanation: formData.mindset_explanation
+          mindset_explanation: formData.mindset_explanation.trim()
         },
         step4: {
           ethics_choice: formData.ethics_choice,
           culture_vs_results: formData.culture_vs_results,
-          why_top_100: formData.why_top_100
+          why_top_100: formData.why_top_100.trim()
         }
       };
 
-      await axios.post(`${API_URL}/api/cfo/applications/submit`, applicationData);
-      setSubmitted(true);
+      const response = await axios.post(`${API_URL}/api/cfo/applications/submit`, applicationData);
+      
+      if (response.data?.success) {
+        setSubmitted(true);
+      } else {
+        setError(response.data?.message || 'Submission failed. Please try again.');
+      }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to submit application');
+      console.error('Submission error:', err);
+      
+      // Extract user-friendly error message
+      const errorDetail = err.response?.data?.detail;
+      let errorMessage = 'Failed to submit application. Please try again.';
+      
+      if (typeof errorDetail === 'string') {
+        // Map backend errors to user-friendly messages
+        if (errorDetail.includes('already submitted')) {
+          errorMessage = 'You have already submitted an application for this competition.';
+        } else if (errorDetail.includes('Validation failed')) {
+          errorMessage = 'Some answers are incomplete. Please review all fields.';
+        } else if (errorDetail.includes('Not eligible')) {
+          errorMessage = 'You are not eligible to apply. Please check eligibility requirements.';
+        } else {
+          errorMessage = errorDetail;
+        }
+      } else if (typeof errorDetail === 'object' && errorDetail !== null) {
+        // Handle object errors - extract message
+        errorMessage = errorDetail.message || errorDetail.msg || 'An error occurred. Please try again.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setSubmitting(false);
     }
