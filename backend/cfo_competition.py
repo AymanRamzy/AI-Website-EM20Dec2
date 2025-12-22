@@ -243,7 +243,7 @@ async def get_profile(current_user: User = Depends(get_current_user)):
     if isinstance(certs, str):
         try:
             certs = json.loads(certs)
-        except:
+        except json.JSONDecodeError:
             certs = []
     
     return GlobalProfileResponse(
