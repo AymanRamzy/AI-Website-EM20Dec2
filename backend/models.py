@@ -34,6 +34,40 @@ class CFOApplicationStatus(str, Enum):
     REJECTED = "rejected"
     WAITLISTED = "waitlisted"
 
+# Global Profile Enums
+class PreferredLanguage(str, Enum):
+    AR = "ar"
+    EN = "en"
+
+class Industry(str, Enum):
+    BANKING = "banking"
+    INVESTMENT = "investment"
+    INSURANCE = "insurance"
+    CONSULTING = "consulting"
+    CORPORATE_FINANCE = "corporate_finance"
+    ACCOUNTING = "accounting"
+    REAL_ESTATE = "real_estate"
+    TECHNOLOGY = "technology"
+    HEALTHCARE = "healthcare"
+    ENERGY = "energy"
+    MANUFACTURING = "manufacturing"
+    RETAIL = "retail"
+    GOVERNMENT = "government"
+    EDUCATION = "education"
+    OTHER = "other"
+
+class YearsOfExperience(str, Enum):
+    LESS_THAN_1 = "0-1"
+    ONE_TO_THREE = "1-3"
+    THREE_TO_FIVE = "3-5"
+    FIVE_TO_TEN = "5-10"
+    TEN_PLUS = "10+"
+
+class CertificationStatus(str, Enum):
+    COMPLETED = "completed"
+    IN_PROGRESS = "in_progress"
+    LEVEL_PASSED = "level_passed"
+
 class TaskType(str, Enum):
     SUBMISSION = "submission"
     PRESENTATION = "presentation"
