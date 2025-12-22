@@ -27,7 +27,11 @@ export const AuthProvider = ({ children }) => {
           const response = await axios.get(`${API_URL}/api/cfo/auth/me`, {
             timeout: 5000
           });
-          setUser(response.data);
+          // Include profile_completed in user state
+          setUser({
+            ...response.data,
+            profile_completed: response.data.profile_completed || false
+          });
         } catch (error) {
           console.error('Failed to load user:', error);
           logout();
@@ -49,9 +53,13 @@ export const AuthProvider = ({ children }) => {
       });
       const { access_token, user: userData } = response.data;
       setToken(access_token);
-      setUser(userData);
+      // Include profile_completed from login response
+      setUser({
+        ...userData,
+        profile_completed: userData.profile_completed || false
+      });
       localStorage.setItem('token', access_token);
-      return { success: true };
+      return { success: true, profile_completed: userData.profile_completed };
     } catch (error) {
       const errorMessage = error.response?.data?.detail || error.message || 'Login failed';
       
