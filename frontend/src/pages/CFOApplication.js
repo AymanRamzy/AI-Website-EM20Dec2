@@ -442,7 +442,7 @@ function CFOApplication() {
               <h3 className="font-bold text-gray-800 mb-3">What level of leadership exposure have you had?</h3>
               <div className="space-y-2">
                 {[
-                  { value: 'individual_contributor', label: 'Individual Contributor', description: 'No direct reports' },
+                  { value: 'none', label: 'Individual Contributor', description: 'No direct reports' },
                   { value: 'team_lead', label: 'Team Lead', description: 'Managing small teams' },
                   { value: 'department_head', label: 'Department Head', description: 'Leading departments/divisions' },
                   { value: 'c_suite', label: 'C-Suite / Executive', description: 'Executive leadership experience' }
