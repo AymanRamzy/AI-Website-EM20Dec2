@@ -114,6 +114,15 @@ function Dashboard() {
                 <p className="text-sm text-gray-600">Welcome back,</p>
                 <p className="font-bold text-modex-primary">{user?.full_name}</p>
               </div>
+              {/* Edit Profile Button */}
+              <button
+                onClick={() => navigate('/profile', { state: { editMode: true } })}
+                className="bg-modex-secondary/10 hover:bg-modex-secondary/20 text-modex-secondary px-4 py-2 rounded-lg font-semibold transition-colors flex items-center"
+                data-testid="edit-profile-btn"
+              >
+                <Edit3 className="w-4 h-4 mr-2" />
+                Edit Profile
+              </button>
               <button
                 onClick={handleLogout}
                 className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center"
