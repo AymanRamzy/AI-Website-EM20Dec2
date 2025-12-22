@@ -101,7 +101,7 @@ function Dashboard() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-black text-modex-primary">
-                Mod<span className="text-modex-secondary">EX</span> <span className="text-xl font-bold text-gray-600">CFO Competition</span>
+                Mod<span className="text-modex-secondary">EX</span> <span className="text-xl font-bold text-gray-600">Dashboard</span>
               </h1>
               {user?.role === 'admin' && (
                 <button onClick={() => navigate('/admin')} className="ml-4 px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">
