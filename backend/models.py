@@ -92,6 +92,55 @@ class UserResponse(BaseModel):
     full_name: str
     role: UserRole
     created_at: datetime
+    profile_completed: bool = False
+
+
+# Global Profile Models
+class Certification(BaseModel):
+    name: str  # CMA, CFA, CPA, ACCA, CIMA, FMVA, AFM, CFM, FRM, CIA, SOCPA, CA, Other
+    status: CertificationStatus
+    year: Optional[int] = None
+
+
+class GlobalProfileUpdate(BaseModel):
+    """Mandatory profile fields after email confirmation"""
+    # Personal & Location
+    country: str
+    preferred_language: PreferredLanguage
+    # Contact
+    mobile_number: str
+    whatsapp_enabled: bool = False
+    # Professional Snapshot
+    job_title: str
+    company_name: str
+    industry: Industry
+    years_of_experience: YearsOfExperience
+    # Professional Presence
+    linkedin_url: Optional[str] = None
+    # Optional Certifications (stored as JSON)
+    certifications: Optional[List[Certification]] = []
+
+
+class GlobalProfileResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str
+    email: str
+    full_name: str
+    role: UserRole
+    profile_completed: bool
+    # Profile fields
+    country: Optional[str] = None
+    preferred_language: Optional[str] = None
+    mobile_number: Optional[str] = None
+    whatsapp_enabled: bool = False
+    job_title: Optional[str] = None
+    company_name: Optional[str] = None
+    industry: Optional[str] = None
+    years_of_experience: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    certifications: Optional[List[dict]] = []
+    created_at: datetime
 
 class User(BaseModel):
     model_config = ConfigDict(extra="ignore")
