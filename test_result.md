@@ -256,6 +256,30 @@ backend:
           - Created test team: 7038e913-b0fd-47f3-afb1-559cc6bf55d3
 
 frontend:
+  - task: "CFO Application Final Submission"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/CFOApplication.js, /app/backend/cfo_competition.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "user"
+        comment: |
+          Final CFO application submission fails at Step 4 (Ethics & Ownership).
+          UI shows generic error: "An error occurred. Please try again."
+          Root cause: Schema mismatch between frontend enum values and backend Pydantic models.
+      - working: true
+        agent: "main"
+        comment: |
+          ✅ BOARD-APPROVED FIX IMPLEMENTED:
+          1. Backend: Made validation errors visible (400 with actual error)
+          2. Frontend: Aligned all enum values with backend expectations
+          3. API Testing: Full submission successful with aligned values
+          Test user: cfotest_submit@example.com / TestPassword123!
+          Application submitted successfully with score 530.0
+
   - task: "Login Page UI"
     implemented: true
     working: true
