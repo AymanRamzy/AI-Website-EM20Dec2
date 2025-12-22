@@ -23,10 +23,10 @@ function AuthConfirm() {
 
         if (data?.session) {
           setStatus('success');
-          // Redirect to login after short delay
+          // Redirect to profile setup after short delay (user needs to complete profile)
           setTimeout(() => {
             navigate('/login', { 
-              state: { message: 'Email confirmed! You can now sign in.' } 
+              state: { message: 'Email confirmed! Please sign in to complete your profile.' } 
             });
           }, 2000);
         } else {
