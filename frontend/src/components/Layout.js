@@ -1,11 +1,40 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { User, LogOut, LayoutDashboard, ChevronDown } from 'lucide-react';
 
 function Layout({ children }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const dropdownRef = useRef(null);
 
   const isActive = (path) => location.pathname === path;
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setProfileDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    setProfileDropdownOpen(false);
+    navigate('/');
+  };
+
+  // Get user initials for avatar
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -105,12 +134,74 @@ function Layout({ children }) {
                   </Link>
                 </div>
               </div>
-              <Link
-                to="/contact"
-                className="bg-modex-secondary text-white px-6 py-2.5 rounded-lg font-bold hover:bg-modex-primary transition-all transform hover:scale-105"
-              >
-                Get Started
-              </Link>
+
+              {/* Auth Section - Conditional Rendering */}
+              {user ? (
+                /* Authenticated User - Profile Dropdown */
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                    className="flex items-center space-x-2 bg-modex-light hover:bg-modex-secondary/10 px-3 py-2 rounded-lg transition-colors"
+                    data-testid="profile-dropdown-btn"
+                  >
+                    <div className="w-8 h-8 bg-modex-secondary text-white rounded-full flex items-center justify-center text-sm font-bold">
+                      {getInitials(user.full_name)}
+                    </div>
+                    <span className="font-semibold text-modex-primary max-w-[100px] truncate">
+                      {user.full_name?.split(' ')[0] || 'User'}
+                    </span>
+                    <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${profileDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {/* Dropdown Menu */}
+                  {profileDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50">
+                      <Link
+                        to="/profile"
+                        onClick={() => setProfileDropdownOpen(false)}
+                        className="flex items-center px-4 py-2 text-gray-700 hover:bg-modex-light transition-colors"
+                      >
+                        <User className="w-4 h-4 mr-2 text-modex-secondary" />
+                        My Profile
+                      </Link>
+                      <Link
+                        to="/dashboard"
+                        onClick={() => setProfileDropdownOpen(false)}
+                        className="flex items-center px-4 py-2 text-gray-700 hover:bg-modex-light transition-colors"
+                      >
+                        <LayoutDashboard className="w-4 h-4 mr-2 text-modex-secondary" />
+                        Dashboard
+                      </Link>
+                      <hr className="my-1 border-gray-200" />
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center w-full px-4 py-2 text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Sign Out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Unauthenticated User - Sign In / Register */
+                <div className="flex items-center space-x-3">
+                  <Link
+                    to="/signin"
+                    className="font-semibold text-gray-700 hover:text-modex-secondary transition-colors"
+                    data-testid="signin-nav-btn"
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    to="/signup"
+                    className="bg-modex-secondary text-white px-6 py-2.5 rounded-lg font-bold hover:bg-modex-primary transition-all transform hover:scale-105"
+                    data-testid="register-nav-btn"
+                  >
+                    Get Started
+                  </Link>
+                </div>
+              )}
             </div>
 
             {/* Mobile menu button */}
@@ -166,13 +257,60 @@ function Layout({ children }) {
                 <Link to="/contact" className="text-gray-700 hover:text-modex-secondary font-semibold py-2" onClick={() => setMobileMenuOpen(false)}>
                   Contact
                 </Link>
-                <Link
-                  to="/contact"
-                  className="bg-modex-secondary text-white px-6 py-2.5 rounded-lg font-bold hover:bg-modex-primary transition-all w-full text-center"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Get Started
-                </Link>
+                
+                {/* Mobile Auth Section */}
+                <div className="border-t border-gray-200 pt-4 mt-2">
+                  {user ? (
+                    <>
+                      <div className="flex items-center space-x-3 mb-3 px-2">
+                        <div className="w-10 h-10 bg-modex-secondary text-white rounded-full flex items-center justify-center font-bold">
+                          {getInitials(user.full_name)}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-modex-primary">{user.full_name}</p>
+                          <p className="text-xs text-gray-500">{user.email}</p>
+                        </div>
+                      </div>
+                      <Link
+                        to="/profile"
+                        className="block text-gray-700 hover:text-modex-secondary font-semibold py-2"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        My Profile
+                      </Link>
+                      <Link
+                        to="/dashboard"
+                        className="block text-gray-700 hover:text-modex-secondary font-semibold py-2"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Dashboard
+                      </Link>
+                      <button
+                        onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
+                        className="block text-red-600 font-semibold py-2 w-full text-left"
+                      >
+                        Sign Out
+                      </button>
+                    </>
+                  ) : (
+                    <div className="space-y-3">
+                      <Link
+                        to="/signin"
+                        className="block text-center text-modex-secondary border-2 border-modex-secondary px-6 py-2.5 rounded-lg font-bold hover:bg-modex-secondary hover:text-white transition-all"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Sign In
+                      </Link>
+                      <Link
+                        to="/signup"
+                        className="block text-center bg-modex-secondary text-white px-6 py-2.5 rounded-lg font-bold hover:bg-modex-primary transition-all"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Get Started
+                      </Link>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
