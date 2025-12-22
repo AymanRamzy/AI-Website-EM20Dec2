@@ -11,8 +11,8 @@ function Competitions() {
       // If logged in, go to dashboard to see competitions
       navigate('/dashboard');
     } else {
-      // If not logged in, go to login page
-      navigate('/login');
+      // If not logged in, go to signin page
+      navigate('/signin');
     }
   };
 
@@ -37,7 +37,7 @@ function Competitions() {
             className="bg-white text-modex-primary px-8 py-4 rounded-xl font-bold text-lg hover:bg-modex-accent hover:text-white transition-all transform hover:scale-105 shadow-2xl" 
             data-testid="register-competition-btn"
           >
-            {user ? 'View Available Competitions' : 'Login to Register'}
+            {user ? 'View Available Competitions' : 'Sign In to Register'}
           </button>
         </div>
       </section>
