@@ -484,7 +484,7 @@ async def upload_cv(
 ):
     """
     Upload CV for CFO application.
-    Stores in Supabase Storage bucket: cfo-cvs
+    Uses SERVICE_ROLE_KEY to upload to private Supabase Storage bucket.
     Path format: cfo/{competition_id}/{user_id}.{ext}
     """
     import logging
@@ -498,45 +498,77 @@ async def upload_cv(
         raise HTTPException(status_code=400, detail="Invalid competition ID format")
     
     # Validate file type
-    allowed_types = ['application/pdf', 'application/msword', 
-                     'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+    allowed_types = [
+        'application/pdf', 
+        'application/msword', 
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ]
     allowed_extensions = ['.pdf', '.doc', '.docx']
     
-    if file.content_type not in allowed_types:
-        raise HTTPException(status_code=400, detail="Please upload a PDF, DOC, or DOCX file")
+    # Check content type
+    content_type = file.content_type or ''
+    if content_type not in allowed_types:
+        # Also check by extension as fallback
+        file_ext_check = os.path.splitext(file.filename or '')[1].lower()
+        if file_ext_check not in allowed_extensions:
+            raise HTTPException(status_code=400, detail="Please upload a PDF, DOC, or DOCX file")
     
     # Get file extension
-    file_ext = os.path.splitext(file.filename)[1].lower()
+    file_ext = os.path.splitext(file.filename or 'cv.pdf')[1].lower()
     if file_ext not in allowed_extensions:
-        raise HTTPException(status_code=400, detail="Please upload a PDF, DOC, or DOCX file")
+        file_ext = '.pdf'  # Default to PDF if extension unclear
+    
+    # Read file contents
+    contents = await file.read()
     
     # Validate file size (5MB max)
-    contents = await file.read()
     if len(contents) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File size must be less than 5MB")
+    
+    if len(contents) == 0:
+        raise HTTPException(status_code=400, detail="File is empty")
     
     # Build file path
     file_path = f"cfo/{competition_id}/{current_user.id}{file_ext}"
     
+    # Determine content type for upload
+    upload_content_type = content_type if content_type in allowed_types else 'application/pdf'
+    
     try:
-        # Upload to Supabase Storage
-        # First try to remove existing file (ignore errors)
+        # Try to remove existing file first (ignore errors)
         try:
             supabase.storage.from_("cfo-cvs").remove([file_path])
         except Exception:
             pass
         
-        # Upload new file
-        supabase.storage.from_("cfo-cvs").upload(
-            file_path,
-            contents,
-            file_options={"content-type": file.content_type}
+        # Upload new file using service role key
+        upload_result = supabase.storage.from_("cfo-cvs").upload(
+            path=file_path,
+            file=contents,
+            file_options={"content-type": upload_content_type, "upsert": "true"}
         )
         
-        # Get public URL
-        cv_url = supabase.storage.from_("cfo-cvs").get_public_url(file_path)
+        # Check for upload errors
+        if hasattr(upload_result, 'error') and upload_result.error:
+            logger.error(f"Supabase upload error: {upload_result.error}")
+            raise HTTPException(status_code=500, detail="Storage upload failed. Please try again.")
         
-        logger.info(f"CV uploaded for user {current_user.id}, competition {competition_id}")
+        # Generate signed URL (private bucket - no public URL)
+        # For private buckets, we store the path and generate signed URLs when needed
+        # But for simplicity, store the path reference
+        cv_url = f"storage/cfo-cvs/{file_path}"
+        
+        # Alternatively, try to get a signed URL valid for 1 year
+        try:
+            signed_url_result = supabase.storage.from_("cfo-cvs").create_signed_url(file_path, 31536000)  # 1 year
+            if signed_url_result and 'signedURL' in signed_url_result:
+                cv_url = signed_url_result['signedURL']
+            elif signed_url_result and 'signedUrl' in signed_url_result:
+                cv_url = signed_url_result['signedUrl']
+        except Exception as sign_err:
+            logger.warning(f"Could not create signed URL: {sign_err}, using path reference")
+        
+        logger.info(f"CV uploaded for user {current_user.id}, competition {competition_id}, path: {file_path}")
         
         return {
             "success": True,
@@ -544,9 +576,11 @@ async def upload_cv(
             "cv_uploaded_at": datetime.utcnow().isoformat()
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"CV upload error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to upload CV. Please try again.")
+        logger.error(f"CV upload error: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
 @router.post("/applications/submit", status_code=201)
