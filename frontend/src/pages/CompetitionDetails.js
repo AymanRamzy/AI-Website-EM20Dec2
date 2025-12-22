@@ -75,7 +75,7 @@ function CompetitionDetails() {
 
   const handleRegister = async () => {
     if (!user) {
-      navigate('/login', { state: { from: `/competitions/${competitionId}` } });
+      navigate('/signin', { state: { from: `/competitions/${competitionId}` } });
       return;
     }
 
@@ -92,8 +92,8 @@ function CompetitionDetails() {
     } catch (error) {
       console.error('Failed to register:', error);
       if (error.response?.status === 401) {
-        setError('Please log in to register for this competition.');
-        setTimeout(() => navigate('/login', { state: { from: `/competitions/${competitionId}` } }), 2000);
+        setError('Please sign in to register for this competition.');
+        setTimeout(() => navigate('/signin', { state: { from: `/competitions/${competitionId}` } }), 2000);
       } else if (error.response?.status === 409) {
         setError('You are already registered for this competition.');
         setIsRegistered(true);
