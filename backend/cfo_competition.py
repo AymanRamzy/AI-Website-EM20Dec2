@@ -271,10 +271,58 @@ async def update_profile(
     profile_data: GlobalProfileUpdate,
     current_user: User = Depends(get_current_user)
 ):
-    """Update global profile and mark as completed"""
+    """Update global profile and mark as completed with validation"""
     import logging
+    import re
     logger = logging.getLogger(__name__)
     supabase = get_supabase_client()
+    
+    # ============================================
+    # BACKEND VALIDATION (Re-validate all inputs)
+    # ============================================
+    errors = {}
+    
+    # Country validation
+    if not profile_data.country or len(profile_data.country.strip()) < 2:
+        errors["country"] = "Country is required"
+    
+    # Mobile number validation: 8-15 digits, numeric only
+    mobile_cleaned = profile_data.mobile_number.replace(" ", "").replace("+", "")
+    if not mobile_cleaned:
+        errors["mobile_number"] = "Mobile number is required"
+    elif not mobile_cleaned.isdigit():
+        errors["mobile_number"] = "Mobile number must contain only digits"
+    elif len(mobile_cleaned) < 8 or len(mobile_cleaned) > 15:
+        errors["mobile_number"] = "Mobile number must be 8-15 digits"
+    
+    # Job title validation: min 2 chars
+    if not profile_data.job_title or len(profile_data.job_title.strip()) < 2:
+        errors["job_title"] = "Job title must be at least 2 characters"
+    
+    # Company name validation: min 2 chars
+    if not profile_data.company_name or len(profile_data.company_name.strip()) < 2:
+        errors["company_name"] = "Company name must be at least 2 characters"
+    
+    # LinkedIn URL validation: must start with linkedin.com
+    linkedin_pattern = r'^https://(www\.)?linkedin\.com/(in|pub|company)/[a-zA-Z0-9_-]+'
+    if not profile_data.linkedin_url:
+        errors["linkedin_url"] = "LinkedIn profile URL is required"
+    elif not re.match(linkedin_pattern, profile_data.linkedin_url, re.IGNORECASE):
+        errors["linkedin_url"] = "LinkedIn URL must be a valid LinkedIn profile URL"
+    
+    # Certifications validation: check "Other" has text if selected
+    for cert in profile_data.certifications:
+        if cert.name == "Other" and (not cert.other_text or len(cert.other_text.strip()) == 0):
+            errors["other_certification"] = "Please specify your other certification"
+        if cert.other_text and len(cert.other_text) > 100:
+            errors["other_certification"] = "Other certification must be under 100 characters"
+    
+    # If validation errors, return structured error response
+    if errors:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"message": "Validation failed", "errors": errors}
+        )
     
     now = datetime.utcnow().isoformat()
     
@@ -282,22 +330,25 @@ async def update_profile(
     certs_list = []
     if profile_data.certifications:
         for cert in profile_data.certifications:
-            certs_list.append({
+            cert_data = {
                 "name": cert.name,
                 "status": cert.status.value,
                 "year": cert.year
-            })
+            }
+            if cert.name == "Other" and cert.other_text:
+                cert_data["other_text"] = cert.other_text.strip()
+            certs_list.append(cert_data)
     
     update_data = {
-        "country": profile_data.country,
+        "country": profile_data.country.strip(),
         "preferred_language": profile_data.preferred_language.value,
-        "mobile_number": profile_data.mobile_number,
+        "mobile_number": profile_data.mobile_number.replace(" ", ""),
         "whatsapp_enabled": profile_data.whatsapp_enabled,
-        "job_title": profile_data.job_title,
-        "company_name": profile_data.company_name,
+        "job_title": profile_data.job_title.strip(),
+        "company_name": profile_data.company_name.strip(),
         "industry": profile_data.industry.value,
         "years_of_experience": profile_data.years_of_experience.value,
-        "linkedin_url": profile_data.linkedin_url,
+        "linkedin_url": profile_data.linkedin_url.strip(),
         "certifications": json.dumps(certs_list),
         "profile_completed": True,
         "updated_at": now
@@ -310,7 +361,7 @@ async def update_profile(
             raise HTTPException(status_code=500, detail="Failed to update profile")
         
         profile = result.data[0]
-        logger.info(f"Profile completed for user {current_user.id}")
+        logger.info(f"Profile completed/updated for user {current_user.id}")
         
         return GlobalProfileResponse(
             id=profile["id"],
