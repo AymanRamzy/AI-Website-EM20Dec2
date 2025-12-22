@@ -637,10 +637,10 @@ function CFOApplication() {
               </h3>
               <div className="space-y-2">
                 {[
-                  { value: 'cut_costs', label: 'Cut Costs Immediately', description: 'Reduce operating expenses' },
-                  { value: 'negotiate_terms', label: 'Negotiate with Lenders', description: 'Restructure debt terms' },
-                  { value: 'raise_capital', label: 'Raise Emergency Capital', description: 'Seek additional funding' },
-                  { value: 'asset_sale', label: 'Sell Non-Core Assets', description: 'Liquidate to improve position' }
+                  { value: 'prioritize_debt', label: 'Prioritize Debt Payments', description: 'Focus on meeting debt obligations' },
+                  { value: 'balance_both', label: 'Balance Both', description: 'Balance debt service and growth' },
+                  { value: 'prioritize_growth', label: 'Prioritize Growth', description: 'Focus on revenue growth' },
+                  { value: 'renegotiate', label: 'Renegotiate Terms', description: 'Restructure debt terms with lenders' }
                 ].map(opt => (
                   <RadioOption
                     key={opt.value}
