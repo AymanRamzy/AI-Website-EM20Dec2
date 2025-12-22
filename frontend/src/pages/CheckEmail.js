@@ -6,11 +6,10 @@ function CheckEmail() {
     <div className="min-h-screen bg-gradient-to-br from-modex-primary via-modex-secondary to-modex-accent flex items-center justify-center py-12 px-4">
       <div className="max-w-md w-full">
         <div className="bg-white rounded-2xl shadow-2xl p-8 text-center">
-          {/* Logo */}
-          <h1 className="text-4xl font-black text-modex-primary mb-2">
+          {/* Logo - Platform Level */}
+          <h1 className="text-4xl font-black text-modex-primary mb-8">
             Mod<span className="text-modex-secondary">EX</span>
           </h1>
-          <h2 className="text-xl font-bold text-modex-primary mb-8">CFO Competition</h2>
 
           {/* Email Icon */}
           <div className="bg-modex-light rounded-full w-24 h-24 mx-auto mb-6 flex items-center justify-center">
@@ -20,14 +19,14 @@ function CheckEmail() {
           {/* Message */}
           <h3 className="text-2xl font-bold text-modex-primary mb-4">Check Your Email</h3>
           <p className="text-gray-600 mb-6">
-            We've sent a confirmation link to your email address. 
+            We&apos;ve sent a confirmation link to your email address. 
             Please click the link to verify your account and complete registration.
           </p>
 
           {/* Info Box */}
           <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-6 text-left">
             <p className="text-blue-800 text-sm">
-              <strong>Didn't receive the email?</strong>
+              <strong>Didn&apos;t receive the email?</strong>
               <br />
               • Check your spam/junk folder
               <br />
@@ -37,13 +36,13 @@ function CheckEmail() {
             </p>
           </div>
 
-          {/* Back to Login */}
+          {/* Back to Sign In */}
           <Link
-            to="/login"
+            to="/signin"
             className="inline-flex items-center text-modex-secondary font-bold hover:text-modex-primary transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Login
+            Back to Sign In
           </Link>
         </div>
       </div>
