@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, UploadFile, File
 from fastapi.security import HTTPBearer
 from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel
 import json
+import os
 
 from supabase_client import get_supabase_client
 from auth import get_current_user, get_admin_user
