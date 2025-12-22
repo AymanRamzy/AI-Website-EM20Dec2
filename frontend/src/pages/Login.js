@@ -29,7 +29,12 @@ function Login() {
     const result = await login(email, password);
     
     if (result.success) {
-      navigate('/dashboard');
+      // Redirect to profile if not completed, otherwise dashboard
+      if (result.profile_completed) {
+        navigate('/dashboard');
+      } else {
+        navigate('/profile');
+      }
     } else {
       setError(result.error);
     }
