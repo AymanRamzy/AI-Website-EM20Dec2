@@ -672,10 +672,10 @@ function CFOApplication() {
               </h3>
               <div className="space-y-2">
                 {[
-                  { value: 'people', label: 'People & Talent', description: 'Protect human capital' },
-                  { value: 'rd', label: 'R&D / Innovation', description: 'Maintain future growth' },
-                  { value: 'marketing', label: 'Marketing & Sales', description: 'Protect revenue drivers' },
-                  { value: 'operations', label: 'Core Operations', description: 'Maintain service delivery' }
+                  { value: 'cut_people', label: 'Cut People Last', description: 'Protect human capital at all costs' },
+                  { value: 'cut_marketing', label: 'Cut Marketing First', description: 'Reduce marketing spend first' },
+                  { value: 'optimize_operations', label: 'Optimize Operations', description: 'Streamline processes before cuts' },
+                  { value: 'renegotiate_vendors', label: 'Renegotiate Vendors', description: 'Reduce external costs first' }
                 ].map(opt => (
                   <RadioOption
                     key={opt.value}
