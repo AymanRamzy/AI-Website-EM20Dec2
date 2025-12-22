@@ -399,6 +399,18 @@ function CFOApplicationDetail() {
             <div className="bg-white rounded-xl p-6 border border-gray-200">
               <h3 className="text-lg font-bold text-modex-primary mb-4">Admin Actions</h3>
               <div className="space-y-3">
+                {/* CV Download Button - Admin Only */}
+                {application?.cv_url && (
+                  <button
+                    onClick={downloadCV}
+                    disabled={downloadingCV}
+                    className="w-full py-2.5 px-4 bg-modex-secondary text-white rounded-lg font-semibold hover:bg-modex-primary transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    {downloadingCV ? 'Preparing...' : '📄 Download CV'}
+                  </button>
+                )}
+                
                 <button
                   onClick={() => updateStatus('qualified')}
                   disabled={updating || application?.status === 'qualified'}
