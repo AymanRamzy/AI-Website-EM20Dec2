@@ -697,10 +697,10 @@ function CFOApplication() {
               </h3>
               <div className="space-y-2">
                 {[
-                  { value: 'risk_management', label: 'Risk Management', description: 'Protecting the company' },
-                  { value: 'growth_enablement', label: 'Growth Enablement', description: 'Driving expansion' },
-                  { value: 'stakeholder_balance', label: 'Stakeholder Balance', description: 'Balancing all interests' },
-                  { value: 'financial_discipline', label: 'Financial Discipline', description: 'Maintaining controls' }
+                  { value: 'number_cruncher', label: 'Number Cruncher', description: 'Focus on accuracy and data' },
+                  { value: 'business_partner', label: 'Business Partner', description: 'Collaborate across departments' },
+                  { value: 'strategic_advisor', label: 'Strategic Advisor', description: 'Guide long-term strategy' },
+                  { value: 'chief_value_officer', label: 'Chief Value Officer', description: 'Maximize stakeholder value' }
                 ].map(opt => (
                   <RadioOption
                     key={opt.value}
