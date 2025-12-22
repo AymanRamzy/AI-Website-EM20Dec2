@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -33,7 +33,9 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Public routes with layout */}
+          {/* ============================================ */}
+          {/* PUBLIC ROUTES (Platform-level, no auth) */}
+          {/* ============================================ */}
           <Route element={<Layout><Home /></Layout>} path="/" />
           <Route element={<Layout><FMVA /></Layout>} path="/fmva" />
           <Route element={<Layout><HundredFM /></Layout>} path="/100fm" />
@@ -45,13 +47,29 @@ function App() {
           <Route element={<Layout><FAQ /></Layout>} path="/faq" />
           <Route element={<Layout><Community /></Layout>} path="/community" />
           
-          {/* Auth routes (no layout) */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          {/* ============================================ */}
+          {/* PLATFORM AUTH ROUTES (Global, no competition context) */}
+          {/* ============================================ */}
+          <Route path="/signin" element={<Login />} />
+          <Route path="/signup" element={<Register />} />
+          <Route path="/login" element={<Navigate to="/signin" replace />} />
+          <Route path="/register" element={<Navigate to="/signup" replace />} />
           <Route path="/auth/confirm" element={<AuthConfirm />} />
           <Route path="/check-email" element={<CheckEmail />} />
           
-          {/* Profile Setup (protected but skips profile check) */}
+          {/* ============================================ */}
+          {/* PLATFORM PROFILE ROUTES (Global, requires auth) */}
+          {/* ============================================ */}
+          {/* Complete Profile - for new users */}
+          <Route
+            path="/complete-profile"
+            element={
+              <ProtectedRoute skipProfileCheck={true}>
+                <ProfileSetup />
+              </ProtectedRoute>
+            }
+          />
+          {/* Edit Profile - alias to same component in edit mode */}
           <Route
             path="/profile"
             element={
@@ -61,7 +79,9 @@ function App() {
             }
           />
           
-          {/* Protected routes (no layout) */}
+          {/* ============================================ */}
+          {/* PLATFORM DASHBOARD (Global, requires complete profile) */}
+          {/* ============================================ */}
           <Route
             path="/dashboard"
             element={
@@ -70,6 +90,63 @@ function App() {
               </ProtectedRoute>
             }
           />
+          
+          {/* ============================================ */}
+          {/* ADMIN ROUTES (Platform-level) */}
+          {/* ============================================ */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute adminOnly={true}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* ============================================ */}
+          {/* COMPETITION ROUTES (Read global profile, no profile logic) */}
+          {/* ============================================ */}
+          <Route
+            path="/competitions/:competitionId"
+            element={
+              <ProtectedRoute>
+                <CompetitionDetails />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/competitions/:competitionId/apply"
+            element={
+              <ProtectedRoute>
+                <CFOApplication />
+              </ProtectedRoute>
+            }
+          />
+          {/* Legacy route redirect */}
+          <Route
+            path="/cfo-application/:competitionId"
+            element={<Navigate to="/competitions/:competitionId/apply" replace />}
+          />
+          <Route
+            path="/competitions/:competitionId/applications"
+            element={
+              <ProtectedRoute>
+                <CFOApplicationsList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/competitions/:competitionId/applications/:applicationId"
+            element={
+              <ProtectedRoute>
+                <CFOApplicationDetail />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* ============================================ */}
+          {/* TEAM ROUTES (Competition-related) */}
+          {/* ============================================ */}
           <Route
             path="/teams/create"
             element={
@@ -91,47 +168,6 @@ function App() {
             element={
               <ProtectedRoute>
                 <TeamDetails />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/competitions/:competitionId"
-            element={
-              <ProtectedRoute>
-                <CompetitionDetails />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute>
-                <AdminDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/cfo-application/:competitionId"
-            element={
-              <ProtectedRoute>
-                <CFOApplication />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/competitions/:competitionId/applications"
-            element={
-              <ProtectedRoute>
-                <CFOApplicationsList />
-              </ProtectedRoute>
-            }
-          />
-          
-          <Route
-            path="/competitions/:competitionId/applications/:applicationId"
-            element={
-              <ProtectedRoute>
-                <CFOApplicationDetail />
               </ProtectedRoute>
             }
           />
