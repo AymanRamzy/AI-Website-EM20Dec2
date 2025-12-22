@@ -731,7 +731,7 @@ function ProfileSetup() {
                     Professional Certifications <span className="text-red-500">*</span>
                   </label>
                   <p className="text-sm text-gray-500 mb-3">
-                    Select all certifications you hold or are pursuing. Choose "None" if you don't have any.
+                    Select all certifications you hold or are pursuing. Choose &quot;None&quot; if you don&apos;t have any.
                   </p>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto p-2 border rounded-lg">
