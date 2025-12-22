@@ -51,6 +51,16 @@ function App() {
           <Route path="/auth/confirm" element={<AuthConfirm />} />
           <Route path="/check-email" element={<CheckEmail />} />
           
+          {/* Profile Setup (protected but skips profile check) */}
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute skipProfileCheck={true}>
+                <ProfileSetup />
+              </ProtectedRoute>
+            }
+          />
+          
           {/* Protected routes (no layout) */}
           <Route
             path="/dashboard"
