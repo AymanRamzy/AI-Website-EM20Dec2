@@ -199,14 +199,143 @@ async def login(user_credentials: UserLogin):
             email=profile_data["email"],
             full_name=profile_data["full_name"],
             role=UserRole(profile_data["role"]),
-            created_at=datetime.fromisoformat(profile_data["created_at"])
+            created_at=datetime.fromisoformat(profile_data["created_at"]),
+            profile_completed=profile_data.get("profile_completed", False)
         )
     }
 
 
 @router.get("/auth/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)):
-    return current_user
+    """Get current user with profile_completed status"""
+    supabase = get_supabase_client()
+    profile = supabase.table("user_profiles").select("profile_completed").eq("id", current_user.id).execute()
+    profile_completed = profile.data[0].get("profile_completed", False) if profile.data else False
+    
+    return UserResponse(
+        id=current_user.id,
+        email=current_user.email,
+        full_name=current_user.full_name,
+        role=current_user.role,
+        created_at=current_user.created_at,
+        profile_completed=profile_completed
+    )
+
+
+# =========================================================
+# GLOBAL PROFILE (Phase 3)
+# =========================================================
+
+@router.get("/profile", response_model=GlobalProfileResponse)
+async def get_profile(current_user: User = Depends(get_current_user)):
+    """Get current user's global profile"""
+    supabase = get_supabase_client()
+    
+    result = supabase.table("user_profiles").select("*").eq("id", current_user.id).execute()
+    
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    profile = result.data[0]
+    
+    # Parse certifications JSON if stored as string
+    certs = profile.get("certifications", [])
+    if isinstance(certs, str):
+        try:
+            certs = json.loads(certs)
+        except:
+            certs = []
+    
+    return GlobalProfileResponse(
+        id=profile["id"],
+        email=profile["email"],
+        full_name=profile["full_name"],
+        role=UserRole(profile["role"]),
+        profile_completed=profile.get("profile_completed", False),
+        country=profile.get("country"),
+        preferred_language=profile.get("preferred_language"),
+        mobile_number=profile.get("mobile_number"),
+        whatsapp_enabled=profile.get("whatsapp_enabled", False),
+        job_title=profile.get("job_title"),
+        company_name=profile.get("company_name"),
+        industry=profile.get("industry"),
+        years_of_experience=profile.get("years_of_experience"),
+        linkedin_url=profile.get("linkedin_url"),
+        certifications=certs,
+        created_at=datetime.fromisoformat(profile["created_at"])
+    )
+
+
+@router.put("/profile", response_model=GlobalProfileResponse)
+async def update_profile(
+    profile_data: GlobalProfileUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update global profile and mark as completed"""
+    import logging
+    logger = logging.getLogger(__name__)
+    supabase = get_supabase_client()
+    
+    now = datetime.utcnow().isoformat()
+    
+    # Convert certifications to JSON-serializable format
+    certs_list = []
+    if profile_data.certifications:
+        for cert in profile_data.certifications:
+            certs_list.append({
+                "name": cert.name,
+                "status": cert.status.value,
+                "year": cert.year
+            })
+    
+    update_data = {
+        "country": profile_data.country,
+        "preferred_language": profile_data.preferred_language.value,
+        "mobile_number": profile_data.mobile_number,
+        "whatsapp_enabled": profile_data.whatsapp_enabled,
+        "job_title": profile_data.job_title,
+        "company_name": profile_data.company_name,
+        "industry": profile_data.industry.value,
+        "years_of_experience": profile_data.years_of_experience.value,
+        "linkedin_url": profile_data.linkedin_url,
+        "certifications": json.dumps(certs_list),
+        "profile_completed": True,
+        "updated_at": now
+    }
+    
+    try:
+        result = supabase.table("user_profiles").update(update_data).eq("id", current_user.id).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to update profile")
+        
+        profile = result.data[0]
+        logger.info(f"Profile completed for user {current_user.id}")
+        
+        return GlobalProfileResponse(
+            id=profile["id"],
+            email=profile["email"],
+            full_name=profile["full_name"],
+            role=UserRole(profile["role"]),
+            profile_completed=True,
+            country=profile.get("country"),
+            preferred_language=profile.get("preferred_language"),
+            mobile_number=profile.get("mobile_number"),
+            whatsapp_enabled=profile.get("whatsapp_enabled", False),
+            job_title=profile.get("job_title"),
+            company_name=profile.get("company_name"),
+            industry=profile.get("industry"),
+            years_of_experience=profile.get("years_of_experience"),
+            linkedin_url=profile.get("linkedin_url"),
+            certifications=certs_list,
+            created_at=datetime.fromisoformat(profile["created_at"])
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Profile update error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update profile: {str(e)}")
 
 
 # =========================================================
