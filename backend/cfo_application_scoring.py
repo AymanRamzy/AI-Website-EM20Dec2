@@ -205,6 +205,28 @@ def score_step1(step1: CFOApplicationStep1) -> Dict:
     }
     score += commitment_scores.get(step1.commitment_level, 0)
     
+    # NEW: CFO Readiness & Commitment scoring (merged question)
+    # Replaces both willingness and commitment weights
+    if step1.cfo_readiness_commitment:
+        readiness_scores = {
+            CFOReadinessCommitment.NOT_READY: 0,  # Hard gate - should not reach here
+            CFOReadinessCommitment.EXPLORING: 10,
+            CFOReadinessCommitment.READY_WITH_CONDITIONS: 25,
+            CFOReadinessCommitment.FULLY_READY: 40
+        }
+        score += readiness_scores.get(step1.cfo_readiness_commitment, 0)
+        
+        # Hard gate: NOT_READY = auto-exclude
+        if step1.cfo_readiness_commitment == CFOReadinessCommitment.NOT_READY:
+            red_flags.append("not_ready_for_cfo")
+            return {
+                "raw_score": 0,
+                "weighted_score": 0,
+                "red_flags": ["not_ready_for_cfo"],
+                "auto_exclude": True,
+                "exclusion_reason": "Applicant indicated they are not ready for CFO responsibilities"
+            }
+    
     # Auto-exclude check: lowest willingness AND lowest commitment
     auto_exclude = (
         step1.leadership_willingness == LeadershipWillingness.NOT_INTERESTED and
