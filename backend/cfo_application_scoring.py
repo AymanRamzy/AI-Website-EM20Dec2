@@ -108,6 +108,8 @@ class CFOApplicationStep1(BaseModel):
     decision_ownership: DecisionOwnership
     leadership_willingness: LeadershipWillingness
     commitment_level: CommitmentLevel
+    # NEW: Merged readiness & commitment question
+    cfo_readiness_commitment: Optional[CFOReadinessCommitment] = None
 
 class CFOApplicationStep2(BaseModel):
     capital_allocation: CapitalAllocationChoice
