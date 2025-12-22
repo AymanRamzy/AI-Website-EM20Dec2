@@ -149,9 +149,12 @@ function CFOApplication() {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // Validate file type
+    // Validate file type (also accept by extension as browsers may report different types)
     const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-    if (!allowedTypes.includes(file.type)) {
+    const allowedExtensions = ['.pdf', '.doc', '.docx'];
+    const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+    
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExt)) {
       setCvError('Please upload a PDF, DOC, or DOCX file');
       return;
     }
@@ -167,34 +170,31 @@ function CFOApplication() {
     setCvUploading(true);
     
     try {
-      // Get file extension
-      const ext = file.name.split('.').pop().toLowerCase();
-      const fileName = `cfo/${competitionId}/${user.id}.${ext}`;
-      
-      // Upload to Supabase Storage
+      // Create FormData and send to backend
       const formDataUpload = new FormData();
       formDataUpload.append('file', file);
       
+      // Send to backend endpoint (backend uses service role key to upload to Supabase)
       const uploadResponse = await axios.post(
-        `${API_URL}/api/cfo/applications/upload-cv`,
+        `${API_URL}/api/cfo/applications/upload-cv?competition_id=${competitionId}`,
         formDataUpload,
         {
           headers: {
-            'Content-Type': 'multipart/form-data',
             'Authorization': `Bearer ${token}`
-          },
-          params: { competition_id: competitionId }
+          }
         }
       );
       
-      if (uploadResponse.data?.cv_url) {
+      if (uploadResponse.data?.success && uploadResponse.data?.cv_url) {
         setCvUrl(uploadResponse.data.cv_url);
       } else {
-        throw new Error('Upload failed');
+        throw new Error(uploadResponse.data?.detail || 'Upload failed');
       }
     } catch (err) {
       console.error('CV upload error:', err);
-      setCvError(err.response?.data?.detail || 'Failed to upload CV. Please try again.');
+      // Show backend error message verbatim
+      const errorMessage = err.response?.data?.detail || err.message || 'Failed to upload CV. Please try again.';
+      setCvError(errorMessage);
       setCvFile(null);
     } finally {
       setCvUploading(false);
