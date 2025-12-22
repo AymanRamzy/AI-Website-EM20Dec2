@@ -411,8 +411,17 @@ async def check_cfo_eligibility(
     CFO-FIRST MODEL: No team requirements - individuals apply first.
     """
     import logging
+    import re
     logger = logging.getLogger(__name__)
     supabase = get_supabase_client()
+    
+    # UUID validation guard
+    UUID_PATTERN = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
+    if not competition_id or not UUID_PATTERN.match(competition_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid competition ID format"
+        )
     
     eligibility = {
         "eligible": False,
