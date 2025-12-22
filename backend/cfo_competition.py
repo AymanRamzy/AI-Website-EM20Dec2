@@ -476,6 +476,79 @@ async def check_cfo_eligibility(
     return eligibility
 
 
+@router.post("/applications/upload-cv")
+async def upload_cv(
+    competition_id: str,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Upload CV for CFO application.
+    Stores in Supabase Storage bucket: cfo-cvs
+    Path format: cfo/{competition_id}/{user_id}.{ext}
+    """
+    import logging
+    import re
+    logger = logging.getLogger(__name__)
+    supabase = get_supabase_client()
+    
+    # UUID validation
+    UUID_PATTERN = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
+    if not competition_id or not UUID_PATTERN.match(competition_id):
+        raise HTTPException(status_code=400, detail="Invalid competition ID format")
+    
+    # Validate file type
+    allowed_types = ['application/pdf', 'application/msword', 
+                     'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+    allowed_extensions = ['.pdf', '.doc', '.docx']
+    
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Please upload a PDF, DOC, or DOCX file")
+    
+    # Get file extension
+    file_ext = os.path.splitext(file.filename)[1].lower()
+    if file_ext not in allowed_extensions:
+        raise HTTPException(status_code=400, detail="Please upload a PDF, DOC, or DOCX file")
+    
+    # Validate file size (5MB max)
+    contents = await file.read()
+    if len(contents) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File size must be less than 5MB")
+    
+    # Build file path
+    file_path = f"cfo/{competition_id}/{current_user.id}{file_ext}"
+    
+    try:
+        # Upload to Supabase Storage
+        # First try to remove existing file (ignore errors)
+        try:
+            supabase.storage.from_("cfo-cvs").remove([file_path])
+        except:
+            pass
+        
+        # Upload new file
+        result = supabase.storage.from_("cfo-cvs").upload(
+            file_path,
+            contents,
+            file_options={"content-type": file.content_type}
+        )
+        
+        # Get public URL
+        cv_url = supabase.storage.from_("cfo-cvs").get_public_url(file_path)
+        
+        logger.info(f"CV uploaded for user {current_user.id}, competition {competition_id}")
+        
+        return {
+            "success": True,
+            "cv_url": cv_url,
+            "cv_uploaded_at": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"CV upload error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to upload CV. Please try again.")
+
+
 @router.post("/applications/submit", status_code=201)
 async def submit_cfo_application(
     application: CFOFullApplication,
