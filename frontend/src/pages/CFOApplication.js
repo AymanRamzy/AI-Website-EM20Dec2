@@ -763,10 +763,10 @@ function CFOApplication() {
               </h3>
               <div className="space-y-2">
                 {[
-                  { value: 'keep_performer', label: 'Keep the Performer', description: 'Results matter most' },
-                  { value: 'coach_improve', label: 'Coach to Improve', description: 'Invest in behavior change' },
-                  { value: 'isolate_role', label: 'Isolate Their Role', description: 'Minimize team interaction' },
-                  { value: 'let_go', label: 'Let Them Go', description: 'Culture over short-term results' }
+                  { value: 'results_first', label: 'Results First', description: 'Keep the performer, results matter most' },
+                  { value: 'culture_first', label: 'Culture First', description: 'Let them go, culture is paramount' },
+                  { value: 'balance_both', label: 'Balance Both', description: 'Coach and set clear expectations' },
+                  { value: 'depends_on_situation', label: 'Depends on Situation', description: 'Assess context before deciding' }
                 ].map(opt => (
                   <RadioOption
                     key={opt.value}
