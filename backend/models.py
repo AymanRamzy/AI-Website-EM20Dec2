@@ -97,9 +97,10 @@ class UserResponse(BaseModel):
 
 # Global Profile Models
 class Certification(BaseModel):
-    name: str  # CMA, CFA, CPA, ACCA, CIMA, FMVA, AFM, CFM, FRM, CIA, SOCPA, CA, Other
-    status: CertificationStatus
+    name: str  # CFA, CMA, ACCA, CIMA, AFM, CFM, CPA, FMVA, FRM, CIA, SOCPA, CA, Other, None
+    status: CertificationStatus = CertificationStatus.COMPLETED
     year: Optional[int] = None
+    other_text: Optional[str] = None  # Only used when name = "Other"
 
 
 class GlobalProfileUpdate(BaseModel):
@@ -115,10 +116,10 @@ class GlobalProfileUpdate(BaseModel):
     company_name: str
     industry: Industry
     years_of_experience: YearsOfExperience
-    # Professional Presence
-    linkedin_url: Optional[str] = None
-    # Optional Certifications (stored as JSON)
-    certifications: Optional[List[Certification]] = []
+    # Professional Presence (REQUIRED)
+    linkedin_url: str
+    # Certifications (stored as JSON) - can be empty if "None" selected
+    certifications: List[Certification] = []
 
 
 class GlobalProfileResponse(BaseModel):
