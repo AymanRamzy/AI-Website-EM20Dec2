@@ -489,8 +489,19 @@ async def upload_cv(
     """
     import logging
     import re
+    from supabase import create_client
     logger = logging.getLogger(__name__)
-    supabase = get_supabase_client()
+    
+    # BOARD-APPROVED FIX: Create dedicated admin client for storage uploads
+    # This ensures service_role key is used, bypassing RLS
+    SUPABASE_URL = os.environ.get("SUPABASE_URL")
+    SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        raise HTTPException(status_code=500, detail="Storage configuration error")
+    
+    # Create fresh admin client - DO NOT reuse global client
+    supabase_admin = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
     
     # UUID validation
     UUID_PATTERN = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
