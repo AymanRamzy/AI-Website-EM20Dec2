@@ -171,6 +171,100 @@ async def get_competition_cfo_applications(
     }
 
 
+@router.get("/competitions/{competition_id}/cfo-applications/{application_id}/cv")
+async def get_application_cv_download(
+    competition_id: str,
+    application_id: str,
+    current_user: User = Depends(get_admin_user)
+):
+    """
+    Generate signed download URL for applicant's CV (Admin only)
+    BOARD-APPROVED: Manual CV download for admin review
+    """
+    import logging
+    import os
+    from supabase import create_client
+    
+    logger = logging.getLogger(__name__)
+    supabase = get_supabase_client()
+    
+    # Verify application exists and belongs to competition
+    app_response = supabase.table('cfo_applications')\
+        .select('id, cv_url, user_id')\
+        .eq('id', application_id)\
+        .eq('competition_id', competition_id)\
+        .execute()
+    
+    if not app_response.data:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    application = app_response.data[0]
+    cv_url = application.get('cv_url')
+    
+    if not cv_url:
+        raise HTTPException(status_code=404, detail="No CV uploaded for this application")
+    
+    # Extract file path from cv_url
+    # cv_url could be: 
+    # - "storage/cfo-cvs/cfo/{comp_id}/{user_id}.pdf" (path reference)
+    # - Full signed URL (already signed, may be expired)
+    # - "cfo/{comp_id}/{user_id}.pdf" (direct path)
+    
+    if 'storage/cfo-cvs/' in cv_url:
+        file_path = cv_url.replace('storage/cfo-cvs/', '')
+    elif cv_url.startswith('cfo/'):
+        file_path = cv_url
+    elif '/object/sign/cfo-cvs/' in cv_url:
+        # Extract path from signed URL
+        parts = cv_url.split('/object/sign/cfo-cvs/')
+        if len(parts) > 1:
+            file_path = parts[1].split('?')[0]
+        else:
+            # Fallback: construct from known format
+            file_path = f"cfo/{competition_id}/{application['user_id']}.pdf"
+    else:
+        # Fallback: construct from known format
+        file_path = f"cfo/{competition_id}/{application['user_id']}.pdf"
+    
+    # Create dedicated admin client for storage access (service role key bypasses RLS)
+    SUPABASE_URL = os.environ.get("SUPABASE_URL")
+    SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        raise HTTPException(status_code=500, detail="Storage configuration error")
+    
+    supabase_admin = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    
+    try:
+        # Generate signed URL with short expiry (10 minutes = 600 seconds)
+        signed_url_result = supabase_admin.storage.from_("cfo-cvs").create_signed_url(file_path, 600)
+        
+        if not signed_url_result:
+            raise HTTPException(status_code=500, detail="Failed to generate download URL")
+        
+        # Handle different response formats from Supabase
+        download_url = None
+        if isinstance(signed_url_result, dict):
+            download_url = signed_url_result.get('signedURL') or signed_url_result.get('signedUrl')
+        
+        if not download_url:
+            raise HTTPException(status_code=500, detail="Failed to generate download URL")
+        
+        logger.info(f"Admin {current_user.id} requested CV download for application {application_id}")
+        
+        return {
+            "download_url": download_url,
+            "expires_in": 600,
+            "filename": f"cv_{application_id[:8]}.pdf"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"CV download error for application {application_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate download URL")
+
+
 @router.get("/competitions/{competition_id}/cfo-applications/{application_id}")
 async def get_application_detail(
     competition_id: str,
