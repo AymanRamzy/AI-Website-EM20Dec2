@@ -490,50 +490,42 @@ test_plan:
 agent_communication:
   - agent: "main"
     message: |
-      ADMIN CFO APPLICATIONS VIEW IMPLEMENTATION COMPLETE
+      🔧 BOARD-APPROVED FIX FOR CFO APPLICATION SUBMISSION FAILURE IMPLEMENTED
       
-      IMPLEMENTED FEATURES:
-      1. Backend Endpoint: GET /api/admin/competitions/{competition_id}/cfo-applications
-         - Returns applications filtered by competition_id
-         - Joins with user_profiles for full_name, email
-         - Sorted by total_score DESC
+      ISSUE FIXED:
+      Final CFO application submission was failing at Step 4 (Ethics & Ownership) with generic error.
+      Root cause: Schema mismatch between frontend enum values and backend Pydantic models.
+      
+      CHANGES MADE:
+      
+      1. BACKEND (cfo_competition.py):
+         - Made validation errors visible by changing exception handling from generic 500 error
+           to exposing actual error details (status 400 with str(e))
          
-      2. Backend Endpoint: PUT /api/admin/competitions/{competition_id}/cfo-applications/{application_id}/status
-         - Updates application status (qualified, reserve, excluded, pending)
-         - Records admin override info
-         
-      3. Frontend: CompetitionDetails.js
-         - Added "View Applications (X)" button for admin users only
-         - Shows count of applications for the competition
-         - Removed link to global Admin Dashboard
-         
-      4. Frontend: CFOApplicationsList.js (REWRITTEN)
-         - Simple table: Name | Email | Status | Score | View
-         - Simple filter: All | Submitted | Qualified | Reserve | Excluded
-         - NO stats cards, NO charts - minimal design
-         
-      5. Frontend: CFOApplicationDetail.js
-         - Read-only application answers
-         - Admin actions: Qualify, Reserve, Exclude buttons
-         
-      6. Frontend: AdminDashboard.js
-         - REMOVED "CFO Applications" tab
-         - Only Overview, Users, Competitions tabs remain
-         
-      TEST USER FOR ADMIN FLOW:
-      - Admin email: ayman.ramzy88@gmail.com (role: admin)
-      - Competition with applications: 39c75cda-... (CFO Excellence Competition 2025)
-      - 1 CFO application exists in database
+      2. FRONTEND (CFOApplication.js) - Aligned enum values with backend:
+         - leadership_exposure: individual_contributor → none
+         - decision_ownership: never/with_supervision/independent/strategic → avoid/delegate/own_with_support/full_ownership  
+         - capital_allocation: growth/debt_reduction/dividends/reserves → safe_investment/moderate_risk/growth_investment/aggressive_expansion
+         - dscr_choice: cut_costs/negotiate_terms/raise_capital/asset_sale → prioritize_debt/balance_both/prioritize_growth/renegotiate
+         - cost_priority: people/rd/marketing/operations → cut_people/cut_marketing/optimize_operations/renegotiate_vendors
+         - cfo_mindset: risk_management/growth_enablement/stakeholder_balance/financial_discipline → number_cruncher/business_partner/strategic_advisor/chief_value_officer
+         - ethics_choice: Added adjust_quietly and do_nothing options (disqualifiers per backend)
+         - culture_vs_results: keep_performer/coach_improve/isolate_role/let_go → results_first/culture_first/balance_both/depends_on_situation
+      
+      API TESTING COMPLETED:
+      ✅ Created test user: cfotest_submit@example.com / TestPassword123!
+      ✅ Login successful
+      ✅ Full application submission successful with all correct enum values
+      ✅ Application stored in database with score 530.0 and status "submitted"
       
       PLEASE TEST:
-      1. Login as admin user
-      2. Navigate to competition details for competition ID starting with 39c75cda
-      3. Verify "View Applications (X)" button shows with count
-      4. Click button and verify applications list loads
-      5. Test filter functionality
-      6. Click View on an application
-      7. Test Qualify/Reserve/Exclude buttons
-      8. Verify Admin Dashboard no longer has CFO Applications tab
+      1. Full CFO application flow via UI
+      2. Test with test user: cfotest_submit@example.com / TestPassword123!
+      3. Navigate to CFO application form for competition 39c75cda-...
+      4. Fill all 4 steps and verify CV upload works
+      5. Submit and verify success
+      
+      NEEDS_RETESTING: true
   - agent: "main"
     message: |
       Phase 1.6 - Database Architecture Refactoring Complete
