@@ -629,6 +629,7 @@ async def get_my_cfo_application(
     
     # Map internal status to user-friendly status
     status_map = {
+        "submitted": "Under Review",
         "pending": "Under Review",
         "qualified": "Qualified - Top 100",
         "reserve": "Reserve List",
