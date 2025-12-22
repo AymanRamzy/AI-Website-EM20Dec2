@@ -320,7 +320,7 @@ function CompetitionDetails() {
                 ) : !isRegistrationOpen() ? (
                   'Registration Not Open'
                 ) : !user ? (
-                  'Login to Register'
+                  'Sign In to Register'
                 ) : (
                   <>
                     <UserPlus className="w-5 h-5 mr-2" />
