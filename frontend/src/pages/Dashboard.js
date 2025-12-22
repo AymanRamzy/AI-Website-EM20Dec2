@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Trophy, Users, Calendar, LogOut, Plus, ArrowRight, Clock, CheckCircle } from 'lucide-react';
+import { Trophy, Users, Calendar, LogOut, Plus, ArrowRight, Clock, CheckCircle, Edit3, User } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || '';
 
