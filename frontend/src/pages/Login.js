@@ -10,8 +10,19 @@ function Login() {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
+
+  // If already logged in, redirect appropriately
+  useEffect(() => {
+    if (user) {
+      if (user.profile_completed) {
+        navigate('/dashboard');
+      } else {
+        navigate('/complete-profile');
+      }
+    }
+  }, [user, navigate]);
 
   // Clear location state after reading
   useEffect(() => {
@@ -29,11 +40,13 @@ function Login() {
     const result = await login(email, password);
     
     if (result.success) {
-      // Redirect to profile if not completed, otherwise dashboard
+      // Redirect based on profile completion status
       if (result.profile_completed) {
-        navigate('/dashboard');
+        // Check if there was a redirect target
+        const from = location.state?.from?.pathname || '/dashboard';
+        navigate(from);
       } else {
-        navigate('/profile');
+        navigate('/complete-profile');
       }
     } else {
       setError(result.error);
@@ -45,12 +58,11 @@ function Login() {
     <div className="min-h-screen bg-gradient-to-br from-modex-primary via-modex-secondary to-modex-accent flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full">
         <div className="bg-white rounded-2xl shadow-2xl p-8">
-          {/* Logo */}
+          {/* Logo - Platform Level */}
           <div className="text-center mb-8">
             <h1 className="text-4xl font-black text-modex-primary mb-2">
               Mod<span className="text-modex-secondary">EX</span>
             </h1>
-            <h2 className="text-2xl font-bold text-modex-primary mb-2">CFO Competition</h2>
             <p className="text-gray-600">Sign in to your account</p>
           </div>
 
@@ -86,6 +98,7 @@ function Login() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-modex-secondary focus:outline-none transition-colors"
                   placeholder="your@email.com"
+                  data-testid="email-input"
                 />
               </div>
             </div>
@@ -104,6 +117,7 @@ function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-modex-secondary focus:outline-none transition-colors"
                   placeholder="••••••••"
+                  data-testid="password-input"
                 />
               </div>
             </div>
@@ -112,6 +126,7 @@ function Login() {
               type="submit"
               disabled={loading}
               className="w-full bg-modex-secondary text-white py-3 rounded-lg font-bold hover:bg-modex-primary transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
+              data-testid="signin-btn"
             >
               {loading ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
@@ -127,9 +142,9 @@ function Login() {
           {/* Register Link */}
           <div className="mt-6 text-center">
             <p className="text-gray-600">
-              Don't have an account?{' '}
-              <Link to="/register" className="text-modex-secondary font-bold hover:text-modex-primary transition-colors">
-                Register here
+              Don&apos;t have an account?{' '}
+              <Link to="/signup" className="text-modex-secondary font-bold hover:text-modex-primary transition-colors">
+                Sign up here
               </Link>
             </p>
           </div>
