@@ -476,18 +476,75 @@ async def submit_cfo_application(
     logger = logging.getLogger(__name__)
     supabase = get_supabase_client()
     
-    # Verify eligibility first
-    eligibility_check = await check_cfo_eligibility(application.competition_id, current_user)
-    if not eligibility_check["eligible"]:
+    # Validate all required fields before processing
+    validation_errors = []
+    
+    # Step 1 validation
+    if not application.step1.experience_years:
+        validation_errors.append("Experience years is required")
+    if not application.step1.leadership_exposure:
+        validation_errors.append("Leadership exposure is required")
+    if not application.step1.decision_ownership:
+        validation_errors.append("Decision ownership is required")
+    if not application.step1.leadership_willingness:
+        validation_errors.append("Leadership willingness is required")
+    if not application.step1.commitment_level:
+        validation_errors.append("Commitment level is required")
+    
+    # Step 2 validation
+    if not application.step2.capital_allocation:
+        validation_errors.append("Capital allocation choice is required")
+    if not application.step2.capital_justification or len(application.step2.capital_justification.strip()) < 50:
+        validation_errors.append("Capital justification must be at least 50 characters")
+    if not application.step2.cash_vs_profit or len(application.step2.cash_vs_profit.strip()) < 50:
+        validation_errors.append("Cash vs profit answer must be at least 50 characters")
+    if not application.step2.kpi_prioritization or len(application.step2.kpi_prioritization.strip()) < 50:
+        validation_errors.append("KPI prioritization answer must be at least 50 characters")
+    
+    # Step 3 validation
+    if not application.step3.dscr_choice:
+        validation_errors.append("DSCR choice is required")
+    if not application.step3.dscr_impact or len(application.step3.dscr_impact.strip()) < 30:
+        validation_errors.append("DSCR impact must be at least 30 characters")
+    if not application.step3.cost_priority:
+        validation_errors.append("Cost priority is required")
+    if not application.step3.cfo_mindset:
+        validation_errors.append("CFO mindset is required")
+    if not application.step3.mindset_explanation or len(application.step3.mindset_explanation.strip()) < 30:
+        validation_errors.append("Mindset explanation must be at least 30 characters")
+    
+    # Step 4 validation
+    if not application.step4.ethics_choice:
+        validation_errors.append("Ethics choice is required")
+    if not application.step4.culture_vs_results:
+        validation_errors.append("Culture vs results is required")
+    if not application.step4.why_top_100 or len(application.step4.why_top_100.strip()) < 100:
+        validation_errors.append("Why top 100 must be at least 100 characters")
+    
+    if validation_errors:
         raise HTTPException(
-            status_code=403,
-            detail=f"Not eligible to apply: {', '.join(eligibility_check['reasons'])}"
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Validation failed: {'; '.join(validation_errors)}"
+        )
+    
+    # Verify eligibility (do NOT re-check during submission, trust frontend)
+    # But still check for duplicate submissions
+    existing_app = supabase.table("cfo_applications")\
+        .select("id")\
+        .eq("user_id", current_user.id)\
+        .eq("competition_id", application.competition_id)\
+        .execute()
+    
+    if existing_app.data:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="You have already submitted an application for this competition"
         )
     
     # Calculate score
     score_result = calculate_total_score(application)
     
-    # Prepare application data for storage
+    # Prepare application data for storage - ATOMIC SINGLE INSERT
     app_data = {
         "user_id": current_user.id,
         "competition_id": application.competition_id,
@@ -499,19 +556,19 @@ async def submit_cfo_application(
         "commitment_level": application.step1.commitment_level.value,
         # Step 2
         "capital_allocation": application.step2.capital_allocation.value,
-        "capital_justification": application.step2.capital_justification,
-        "cash_vs_profit": application.step2.cash_vs_profit,
-        "kpi_prioritization": application.step2.kpi_prioritization,
+        "capital_justification": application.step2.capital_justification.strip(),
+        "cash_vs_profit": application.step2.cash_vs_profit.strip(),
+        "kpi_prioritization": application.step2.kpi_prioritization.strip(),
         # Step 3
         "dscr_choice": application.step3.dscr_choice.value,
-        "dscr_impact": application.step3.dscr_impact,
+        "dscr_impact": application.step3.dscr_impact.strip(),
         "cost_priority": application.step3.cost_priority.value,
         "cfo_mindset": application.step3.cfo_mindset.value,
-        "mindset_explanation": application.step3.mindset_explanation,
+        "mindset_explanation": application.step3.mindset_explanation.strip(),
         # Step 4
         "ethics_choice": application.step4.ethics_choice.value,
         "culture_vs_results": application.step4.culture_vs_results.value,
-        "why_top_100": application.step4.why_top_100,
+        "why_top_100": application.step4.why_top_100.strip(),
         # Scoring (internal only)
         "total_score": score_result["final_score"],
         "raw_score": score_result["total_raw_score"],
@@ -523,8 +580,8 @@ async def submit_cfo_application(
         "red_flags": score_result["red_flags"],
         "auto_excluded": score_result["auto_exclude"],
         "exclusion_reason": score_result["exclusion_reason"],
-        # Status
-        "status": "excluded" if score_result["auto_exclude"] else "pending",
+        # Status - EXPLICIT SUBMITTED STATUS
+        "status": "excluded" if score_result["auto_exclude"] else "submitted",
         "submitted_at": datetime.utcnow().isoformat()
     }
     
@@ -532,11 +589,11 @@ async def submit_cfo_application(
         result = supabase.table("cfo_applications").insert(app_data).execute()
         
         if not result.data:
-            raise HTTPException(status_code=500, detail="Failed to submit application")
+            raise HTTPException(status_code=500, detail="Database error: Failed to save application")
         
         logger.info(f"CFO application submitted by user {current_user.id}, score: {score_result['final_score']}, excluded: {score_result['auto_exclude']}")
         
-        # Return success without revealing score
+        # Return clean success response
         return {
             "success": True,
             "message": "Your CFO leadership application has been submitted successfully.",
@@ -544,9 +601,11 @@ async def submit_cfo_application(
             "status": "under_review"
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"CFO application error: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to submit application: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to submit application. Please try again.")
 
 
 @router.get("/applications/my-application")
