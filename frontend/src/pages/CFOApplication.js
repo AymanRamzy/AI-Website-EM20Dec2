@@ -465,10 +465,10 @@ function CFOApplication() {
               <h3 className="font-bold text-gray-800 mb-3">Have you owned significant financial decisions?</h3>
               <div className="space-y-2">
                 {[
-                  { value: 'never', label: 'Never', description: 'No ownership of financial decisions' },
-                  { value: 'with_supervision', label: 'With Supervision', description: 'Decisions reviewed by others' },
-                  { value: 'independent', label: 'Independent', description: 'Made decisions independently' },
-                  { value: 'strategic', label: 'Strategic Level', description: 'Owned strategic financial decisions' }
+                  { value: 'avoid', label: 'Never', description: 'No ownership of financial decisions' },
+                  { value: 'delegate', label: 'With Supervision', description: 'Decisions reviewed by others' },
+                  { value: 'own_with_support', label: 'Independent', description: 'Made decisions independently' },
+                  { value: 'full_ownership', label: 'Strategic Level', description: 'Owned strategic financial decisions' }
                 ].map(opt => (
                   <RadioOption
                     key={opt.value}
