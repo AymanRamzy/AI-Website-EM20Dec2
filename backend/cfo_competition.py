@@ -548,12 +548,12 @@ async def upload_cv(
     try:
         # Try to remove existing file first (ignore errors)
         try:
-            supabase.storage.from_("cfo-cvs").remove([file_path])
+            supabase_admin.storage.from_("cfo-cvs").remove([file_path])
         except Exception:
             pass
         
-        # Upload new file using service role key
-        upload_result = supabase.storage.from_("cfo-cvs").upload(
+        # Upload new file using admin client (service role key bypasses RLS)
+        upload_result = supabase_admin.storage.from_("cfo-cvs").upload(
             path=file_path,
             file=contents,
             file_options={"content-type": upload_content_type, "upsert": "true"}
@@ -571,7 +571,7 @@ async def upload_cv(
         
         # Alternatively, try to get a signed URL valid for 1 year
         try:
-            signed_url_result = supabase.storage.from_("cfo-cvs").create_signed_url(file_path, 31536000)  # 1 year
+            signed_url_result = supabase_admin.storage.from_("cfo-cvs").create_signed_url(file_path, 31536000)  # 1 year
             if signed_url_result and 'signedURL' in signed_url_result:
                 cv_url = signed_url_result['signedURL']
             elif signed_url_result and 'signedUrl' in signed_url_result:
