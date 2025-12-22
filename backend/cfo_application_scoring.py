@@ -135,6 +135,9 @@ class CFOFullApplication(BaseModel):
     step2: CFOApplicationStep2
     step3: CFOApplicationStep3
     step4: CFOApplicationStep4
+    # CV Upload (required)
+    cv_url: Optional[str] = None
+    cv_uploaded_at: Optional[str] = None
 
 # =========================================================
 # SCORING WEIGHTS
