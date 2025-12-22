@@ -574,10 +574,10 @@ function CFOApplication() {
               </h3>
               <div className="space-y-2">
                 {[
-                  { value: 'growth', label: 'Growth Investment', description: 'Invest in expansion and new markets' },
-                  { value: 'debt_reduction', label: 'Debt Reduction', description: 'Pay down existing debt' },
-                  { value: 'dividends', label: 'Shareholder Dividends', description: 'Return value to shareholders' },
-                  { value: 'reserves', label: 'Cash Reserves', description: 'Build financial buffer' }
+                  { value: 'safe_investment', label: 'Safe Investment', description: 'Low-risk, stable returns' },
+                  { value: 'moderate_risk', label: 'Moderate Risk', description: 'Balanced risk and return' },
+                  { value: 'growth_investment', label: 'Growth Investment', description: 'Invest in expansion and new markets' },
+                  { value: 'aggressive_expansion', label: 'Aggressive Expansion', description: 'High-risk, high-reward growth' }
                 ].map(opt => (
                   <RadioOption
                     key={opt.value}
