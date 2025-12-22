@@ -753,7 +753,8 @@ async def submit_cfo_application(
         raise
     except Exception as e:
         logger.error(f"CFO application error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to submit application. Please try again.")
+        # BOARD-APPROVED: Expose actual validation errors
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/applications/my-application")
