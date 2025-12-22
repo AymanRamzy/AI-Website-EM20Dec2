@@ -237,7 +237,7 @@ function Dashboard() {
             {!myTeam ? (
               <div className="bg-white rounded-xl p-12 text-center border-2 border-gray-200">
                 <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600 text-lg mb-6">You're not in any team yet</p>
+                <p className="text-gray-600 text-lg mb-6">You&apos;re not in any team yet</p>
                 <div className="flex justify-center space-x-4">
                   <button
                     onClick={() => navigate('/teams/create')}
