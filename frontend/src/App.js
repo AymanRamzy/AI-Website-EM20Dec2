@@ -122,10 +122,14 @@ function App() {
               </ProtectedRoute>
             }
           />
-          {/* Legacy route redirect */}
+          {/* Legacy route redirect - handled by CFOApplication itself */}
           <Route
             path="/cfo-application/:competitionId"
-            element={<Navigate to="/competitions/:competitionId/apply" replace />}
+            element={
+              <ProtectedRoute>
+                <CFOApplication />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/competitions/:competitionId/applications"
